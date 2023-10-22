@@ -1,0 +1,8 @@
+# Ignore everything
+
+**
+
+# White-list what we need
+
+!requirements.txt
+!*.py

@@ -1,0 +1,39 @@
+exclude: "^$|deploy|scripts|tmp"
+fail_fast: false
+repos:
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v4.4.0
+  hooks:
+  - id: check-merge-conflict
+  - id: end-of-file-fixer
+  - id: check-toml
+
+- repo: https://github.com/python-poetry/poetry
+  rev: "1.5.1"
+  hooks:
+  - id: poetry-check
+  - id: poetry-lock
+    args:
+    - --no-update
+  - id: poetry-export
+    args: ["-f", "requirements.txt", "-o", "requirements.txt", "--without-hashes"]
+  - id: poetry-export
+    args: ["--with", "dev", "-f", "requirements.txt", "-o", "requirements-dev.txt", "--without-hashes"]
+
+- repo: local
+  hooks:
+  - id: black
+    name: formatting::black
+    entry: black .
+    language: system
+    types: [python]
+  - id: isort
+    name: formatting::isort
+    entry: isort
+    language: system
+    types: [python]
+  - id: flake8
+    name: linting::flake8
+    entry: flake8
+    language: system
+    types: [python]
