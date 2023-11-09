@@ -16,7 +16,7 @@
 on:
   push:
     branches:
-    - develop
+    - develop_disabled
     - feature/*
     tags:
     - v[0-9].*
