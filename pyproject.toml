@@ -8,10 +8,13 @@ license = "MIT"
 # this section contains all dependencies required to run unit and integration tests
 # not just dependencies requied for lambda runtime
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "^3.11,<3.12"
 python-dotenv = "^1.0.0"
 openai = {version = "1.2.0", extras = ["embeddings", "wandb"]}
 google-generativeai = "^0.2.1"
+xgboost = "^2.0.2"
+pandas = "1.5.3"
+scikit-learn = "^1.3.2"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
