@@ -50,7 +50,7 @@ def group_result(result: list[dict[str, str]]) -> None:
     pp.pprint(all_features)
 
 
-def invoke_openai(descriptions: list[str], debug: bool = False):
+def invoke_feature_extract(descriptions: list[str], debug: bool = False):
     if debug:
         print(f"===DEBUG: input={','.join(descriptions)}")
 
@@ -158,7 +158,7 @@ def test_extract_with_openai():
         if not chunk:
             break
 
-        result += invoke_openai(chunk, debug=os.environ.get("DEBUG", False))
+        result += invoke_feature_extract(chunk, debug=os.environ.get("DEBUG", False))
         if len(result) > total_results:
             pickle_result(result)
             total_results = len(result)
