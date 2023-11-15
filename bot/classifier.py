@@ -1,56 +1,12 @@
-import csv
-import itertools
 import json
-import os
-import pickle
-import pprint
 from datetime import datetime
 
 import openai
+from tenacity import retry, stop_after_attempt, wait_random_exponential
 
 
-def normalize_text(text: str) -> str:
-    text = text.replace("\n", " ")
-    text = text.replace("  ", " ")
-    return text.strip()
-
-
-def read_sample_set(csv_file: str) -> tuple[list[str], list[str]]:
-    with open(csv_file, "r", encoding="utf-8") as file:
-        csv_reader = csv.reader(file, delimiter=",")
-        next(csv_reader)  # skip the header row
-
-        rows = list(csv_reader)
-        descriptions = [normalize_text(row[0]) for row in rows if len(row[0]) > 3]
-        categories = [normalize_text(row[1]) for row in rows if len(row[0]) > 3]
-
-        return descriptions, categories
-
-
-def pickle_result(result: list[dict], file_name: str = "result.pickle") -> None:
-    with open("result.pickle", "wb") as file:
-        pickle.dump(result, file)
-
-
-def group_result(result: list[dict[str, str]]) -> None:
-    all_features: dict[str, list[str]] = {}
-    for item in result:
-        if not isinstance(item, dict):
-            # there're some items in the result we don't know what to do
-            continue
-
-        for key in item:
-            if item[key]:
-                if key in all_features:
-                    all_features[key].append(item[key])
-                else:
-                    all_features[key] = [item[key]]
-
-    pp = pprint.PrettyPrinter(indent=4)
-    pp.pprint(all_features)
-
-
-def invoke_feature_extract(descriptions: list[str], debug: bool = False):
+@retry(wait=wait_random_exponential(min=5, max=30), stop=stop_after_attempt(6))
+def extract_features_with_openai(descriptions: list[str], debug: bool = False):
     if debug:
         print(f"===DEBUG: input={','.join(descriptions)}")
 
@@ -143,31 +99,3 @@ def invoke_feature_extract(descriptions: list[str], debug: bool = False):
         print(f"===WARN: {len(descriptions)} intputs yieleded {len(result)} outputs")
 
     return result
-
-
-def test_extract_with_openai():
-    result = []
-    chunk_size = 30
-    total_results = 0
-
-    descs, _ = read_sample_set("data/set1.csv")
-
-    my_iteractor = iter(descs[:1000])
-    while True:
-        chunk = list(itertools.islice(my_iteractor, chunk_size))
-        if not chunk:
-            break
-
-        result += invoke_feature_extract(chunk, debug=os.environ.get("DEBUG", False))
-        if len(result) > total_results:
-            pickle_result(result)
-            total_results = len(result)
-
-    group_result(result)
-
-
-def test_print_features():
-    with open("result.pickle", "rb") as file:
-        results = pickle.load(file)
-        group_result(results)
-        print(f"total results: {len(results)}")

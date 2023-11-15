@@ -1,7 +1,8 @@
 import csv
+import os
 import pickle
+import pprint
 
-import jieba
 import pandas as pd
 import xgboost as xgb
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -9,6 +10,9 @@ from sklearn.impute import SimpleImputer
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
+
+from bot.classifier import extract_features_with_openai
+from bot.utils import chinese_tokenizer, chunked_iter, normalize_text, pickle_result
 
 _TEXT_FEATURES_ = [
     "type",
@@ -25,15 +29,16 @@ _CATEGORY_ = "category"
 _ALL_FIELDS_ = _TEXT_FEATURES_ + [_CATEGORY_]
 
 
-# Function to tokenize Chinese text using jieba
-def chinese_tokenizer(text):
-    return jieba.lcut(text)
+def read_sample_set(csv_file: str) -> tuple[list[str], list[str]]:
+    with open(csv_file, "r", encoding="utf-8") as file:
+        csv_reader = csv.reader(file, delimiter=",")
+        next(csv_reader)  # skip the header row
 
+        rows = list(csv_reader)
+        descriptions = [normalize_text(row[0]) for row in rows if len(row[0]) > 3]
+        categories = [normalize_text(row[1]) for row in rows if len(row[0]) > 3]
 
-def normalize_text(text: str) -> str:
-    text = text.replace("\n", " ")
-    text = text.replace("  ", " ")
-    return text.strip()
+        return descriptions, categories
 
 
 def test_data_prep():
@@ -138,3 +143,37 @@ def test_classify():
 
     # If you want to see the predictions
     # print(predictions)
+
+
+def test_extract_with_openai():
+    total_results, results = 0, []
+    descs, _ = read_sample_set("data/set1.csv")
+
+    for chunk in chunked_iter(30, descs[:1000]):
+        results += extract_features_with_openai(chunk, debug=os.environ.get("DEBUG", False))
+        if len(results) > total_results:
+            pickle_result(results)
+            total_results = len(results)
+
+
+def test_print_features():
+    with open("result.pickle", "rb") as file:
+        results = pickle.load(file)
+
+        all_features = {}
+        for item in results:
+            if not isinstance(item, dict):
+                # there're some items in the result we don't know what to do
+                continue
+
+            for key in item:
+                if item[key]:
+                    if key in all_features:
+                        all_features[key].append(item[key])
+                    else:
+                        all_features[key] = [item[key]]
+
+        pp = pprint.PrettyPrinter(indent=4)
+        pp.pprint(all_features)
+
+        print(f"total results: {len(results)}")
