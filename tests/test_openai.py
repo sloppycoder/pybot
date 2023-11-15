@@ -33,7 +33,10 @@ def test_openai_codegen():
         messages=[
             {
                 "role": "system",
-                "content": "generate code in python use '===code===' tag in separate generated code from other elements. use json output format",
+                "content": """
+                    generate code in python use '===code===' tag in separate generated code from other elements.
+                    use json output format
+                """,
             },
             {
                 "role": "user",
