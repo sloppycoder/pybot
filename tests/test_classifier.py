@@ -1,8 +1,9 @@
 import csv
 import os
 import pickle
-import pprint
 
+import numpy as np
+import pandas
 import pandas as pd
 import xgboost as xgb
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -12,9 +13,10 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 
 from bot.classifier import extract_features_with_openai
-from bot.utils import chinese_tokenizer, chunked_iter, normalize_text, pickle_result
+from bot.utils import chinese_tokenizer, normalize_text
 
 _TEXT_FEATURES_ = [
+    "original_string",
     "type",
     "function",
     "dimension",
@@ -27,18 +29,6 @@ _TEXT_FEATURES_ = [
 _CATEGORY_ = "category"
 
 _ALL_FIELDS_ = _TEXT_FEATURES_ + [_CATEGORY_]
-
-
-def read_sample_set(csv_file: str) -> tuple[list[str], list[str]]:
-    with open(csv_file, "r", encoding="utf-8") as file:
-        csv_reader = csv.reader(file, delimiter=",")
-        next(csv_reader)  # skip the header row
-
-        rows = list(csv_reader)
-        descriptions = [normalize_text(row[0]) for row in rows if len(row[0]) > 3]
-        categories = [normalize_text(row[1]) for row in rows if len(row[0]) > 3]
-
-        return descriptions, categories
 
 
 def test_data_prep():
@@ -82,6 +72,10 @@ def prep_features_df(input_file: str) -> pd.DataFrame:
     cat_imputer = SimpleImputer(strategy="constant", fill_value="unknown")
     for col in _ALL_FIELDS_:
         df[col] = cat_imputer.fit_transform(df[[col]])
+
+    # should print 0 for all columns after imputation
+    print("===after imputation===")
+    print(df.isnull().sum())
 
     # Create a dataframe to hold our feature vectors
     features_df = pd.DataFrame()
@@ -146,34 +140,18 @@ def test_classify():
 
 
 def test_extract_with_openai():
-    total_results, results = 0, []
-    descs, _ = read_sample_set("data/set1.csv")
+    chunk_size = 5
 
-    for chunk in chunked_iter(30, descs[:1000]):
-        results += extract_features_with_openai(chunk, debug=os.environ.get("DEBUG", False))
-        if len(results) > total_results:
-            pickle_result(results)
-            total_results = len(results)
+    full_df = pandas.read_excel("data/test1.xlsx", sheet_name="输出（含人工分类结果）")
+    test_df = full_df[["物料描述", "一级类目"]].applymap(normalize_text).head(7)
+    test_df.rename({"物料描述": "description", "一级类目": "category"}, axis=1, inplace=True)
 
-
-def test_print_features():
-    with open("result.pickle", "rb") as file:
-        results = pickle.load(file)
-
-        all_features = {}
-        for item in results:
-            if not isinstance(item, dict):
-                # there're some items in the result we don't know what to do
-                continue
-
-            for key in item:
-                if item[key]:
-                    if key in all_features:
-                        all_features[key].append(item[key])
-                    else:
-                        all_features[key] = [item[key]]
-
-        pp = pprint.PrettyPrinter(indent=4)
-        pp.pprint(all_features)
-
-        print(f"total results: {len(results)}")
+    features_df = pd.DataFrame()
+    for _, chunk in test_df.groupby(np.arange(len(test_df)) // chunk_size):
+        df = extract_features_with_openai(chunk, debug=os.environ.get("DEBUG", False))
+        if len(df) > 0:
+            # save the result to file everytime result is returned
+            # since openai can be very very slow
+            features_df = pd.concat([features_df, df])
+            features_df.to_csv("data/test1.csv")
+            print(f"===INFO: writing {len(features_df)} rows")

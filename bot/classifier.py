@@ -2,15 +2,20 @@ import json
 from datetime import datetime
 
 import openai
+import pandas as pd
 from tenacity import retry, stop_after_attempt, wait_random_exponential
 
 
-@retry(wait=wait_random_exponential(min=5, max=30), stop=stop_after_attempt(6))
-def extract_features_with_openai(descriptions: list[str], debug: bool = False):
+@retry(wait=wait_random_exponential(min=5, max=30), stop=stop_after_attempt(3))
+def extract_features_with_openai(input_df: pd.DataFrame, debug: bool = True) -> pd.DataFrame:
+    descs = input_df["description"].tolist()
     if debug:
-        print(f"===DEBUG: input={','.join(descriptions)}")
+        print(f"===DEBUG: input={','.join(descs)}")
 
     start_t = datetime.now()
+    if debug:
+        print("===DEBUG: calling openai.chat.completions...")
+
     completion = openai.chat.completions.create(
         model="gpt-4-1106-preview",
         messages=[
@@ -31,7 +36,7 @@ def extract_features_with_openai(descriptions: list[str], debug: bool = False):
                     I want to use json output format.
                     please assign all features to each of the strings in the following list:
                 """
-                + ",".join(descriptions),
+                + ",".join(descs),
             },
         ],
         response_format={"type": "json_object"},
@@ -40,12 +45,13 @@ def extract_features_with_openai(descriptions: list[str], debug: bool = False):
     if completion.choices[0].finish_reason != "stop":
         print("===WARN: completion is not finished")
         print(completion.choices[0].finish_reason)
-        return []
+        raise RuntimeError("completion is not finished")  # this should trigger retry
     else:
-        print(f"===INFO: {len(descriptions)} inputs completed in {(datetime.now()-start_t).total_seconds()} seconds")
+        print(f"===INFO: {len(descs)} inputs completed in {(datetime.now()-start_t).total_seconds()} seconds")
         print(completion.usage)
 
-    result = []
+    result_df = pd.DataFrame()
+
     reply = completion.choices[0].message.content
     if reply is not None:
         try:
@@ -80,22 +86,19 @@ def extract_features_with_openai(descriptions: list[str], debug: bool = False):
             #
             # the logic below handles these 2 types of outputs
             for key in response:
-                if key in descriptions:  # this handles type 3
-                    item = response[key]
-                    result.append(item)
+                if key in descs:  # this handles type 3
+                    result_df = pd.concat([result_df, pd.DataFrame(response[key])], ignore_index=True)
                 else:
-                    if isinstance(response[key], list):  # this handles type 1
-                        result += response[key]
-                    else:  # this handles type 2
-                        result.append(response[key])
+                    # pandas.DataFrame can take both list or dict in its constructor
+                    # so this handles both type 1 and type 2
+                    result_df = pd.concat([result_df, pd.DataFrame(response[key])], ignore_index=True)
         except json.JSONDecodeError:
             print("unable to parse output as json ===")
             print(reply)
     else:
-        print("reply is None")
-        print(completion.choices[0].message)
+        raise RuntimeError("completion is finished but reply is None")  # this should trigger retry
 
-    if len(result) != len(descriptions):
-        print(f"===WARN: {len(descriptions)} intputs yieleded {len(result)} outputs")
+    if len(result_df) != len(input_df):
+        print(f"===WARN: {len(input_df)} intputs yieleded {len(result_df)} outputs")
 
-    return result
+    return result_df
