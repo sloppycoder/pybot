@@ -3,14 +3,23 @@ import csv
 import numpy as np
 import pandas as pd
 
-from bot.classification import PartsClassifier, train_classifier_model
+from bot.classification import (
+    PartsClassifier,
+    train_model_with_embedding,
+    train_model_with_features,
+)
 from bot.feature_extract import InvalidResponse, extract_features_with_openai
 from bot.utils import normalize_text
 
 
 def test_classify():
-    model = train_classifier_model("data/test1.csv")
+    model = train_model_with_features("data/test1.csv")
     model.save_model("data/test1.model")
+
+
+def test_alt_classify():
+    model = train_model_with_embedding("data/embedding1.csv")
+    model.save_model("data/embedding1.model")
 
 
 def test_verify():
@@ -19,8 +28,6 @@ def test_verify():
     input1 = normalize_text("316L不锈钢管道增压泵 150SG140-26")
     output1 = classifier.guess(input1)
     assert output1 is not None
-
-    # full_df = pd.read_excel("data/test1.xlsx", sheet_name="输出（含人工分类结果）")
 
 
 def test_extract_features():

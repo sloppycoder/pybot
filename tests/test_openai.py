@@ -48,3 +48,16 @@ def test_openai_codegen():
     reply = completion.choices[0].message.content
     print(reply)
     # pretty_print_json(reply)
+
+
+def test_embedding():
+    response = openai.embeddings.create(
+        input=[
+            "玻璃管液位计L=800mm  DN25/316L(带排污阀)",
+            "120t/h板式冷却空气过滤器 1840*1840*1730mm",
+            "2205不锈钢大小头159X108",
+        ],
+        model="text-embedding-ada-002",
+    )
+    assert len(response.data) == 3
+    assert len(response.data[2].embedding) == 1536

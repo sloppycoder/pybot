@@ -49,13 +49,11 @@ class PartsClassifier:
 
 
 def prep_features_df(input_file: str) -> pd.DataFrame:
-    # Load your dataset
     df = pd.read_csv(
         input_file,
         encoding="utf-8",
         dtype={field: str for field in _ALL_FIELDS_},  # force all fields to be string
     )
-    # data = data.head(15)
 
     # drop columsn we're not interested in
     df = df.drop([col for col in df.columns if col not in _ALL_FIELDS_], axis=1)
@@ -88,7 +86,53 @@ def prep_features_df(input_file: str) -> pd.DataFrame:
     return features_df
 
 
-def train_classifier_model(input_file: str):
+def train_model_with_embedding(input_file: str):
+    data = pd.read_csv(
+        input_file,
+        encoding="utf-8",
+        dtype={field: str for field in _ALL_FIELDS_},  # force all fields to be string
+    )
+
+    # Separate the features and the target variable
+    X = data.drop(["original_text", _CATEGORY_], axis=1)  # noqa: VNE001
+    y = category_encoder.fit_transform(data[[_CATEGORY_]])  # noqa: VNE001
+
+    # Split data into train and test sets
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    # training parametrs
+    params = {
+        "max_depth": 6,
+        "min_child_weight": 1,
+        "eta": 0.3,
+        "subsample": 1,
+        "colsample_bytree": 1,
+        "objective": "multi:softmax",
+        "num_class": 30,  # there're 31 categories, including the unknown category
+        "eval_metric": "mlogloss",
+        "verbosity": 2,
+        "use_label_encoder": False,
+    }
+
+    model = xgb.XGBClassifier(**params)
+    model.fit(X_train, y_train, eval_set=[(X_test, y_test)], early_stopping_rounds=10)
+
+    # Making predictions and evaluating the model
+    predictions = model.predict(X_test)
+
+    accuracy = accuracy_score(y_test, predictions)
+    print(f"Accuracy: {accuracy}")
+
+    # Filter le.classes_ to keep only those classes that were predicted
+    all_categories = np.unique(np.concatenate((y_test, predictions)))
+    all_labels = [label.strip()[:5] for label in category_encoder.classes_[all_categories]]
+    report = classification_report(y_test, predictions, target_names=all_labels)
+    print(report)
+
+    return model
+
+
+def train_model_with_features(input_file: str):
     data = prep_features_df(input_file)
 
     # Separate the features and the target variable
@@ -108,7 +152,7 @@ def train_classifier_model(input_file: str):
         "objective": "multi:softmax",
         "num_class": 30,  # there're 31 categories, including the unknown category
         "eval_metric": "mlogloss",
-        "verbosity": 1,
+        "verbosity": 2,
         "use_label_encoder": False,
     }
 
