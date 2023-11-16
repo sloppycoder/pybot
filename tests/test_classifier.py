@@ -17,7 +17,7 @@ def test_classify():
     model.save_model("data/test1.model")
 
 
-def test_classify2():
+def test_alt_classify():
     model = train_model_with_embedding("data/embedding1.csv")
     model.save_model("data/embedding1.model")
 
