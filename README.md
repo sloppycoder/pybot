@@ -61,7 +61,7 @@ cp <source_file> data/test1.xlsx
 # this test case will create file data/test1.csv which will be used in the next step
 # setting DEBUG=1 will display result payload from openai APIs
 # redis cache is used to store openai API response to reduce debug time.
-# update classifier.py if redis is not running at localhost:3679 without authentication
+# update classifier.py if redis is not running at localhost:6379 without authentication
 # to delete cache entries from this program, set CLEAR_CACHE=1 when running the following
 #
 # this step can take MANY HOURS to run

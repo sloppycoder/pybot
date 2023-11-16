@@ -51,6 +51,8 @@ _TEXT_FEATURES_ = [
 ]
 
 _CATEGORY_ = "category"
+_UNKNOWN_CATEGORY_ = "待定"
+_UNKNOWN_FEATURE_ = "不详"
 
 _ALL_FIELDS_ = _TEXT_FEATURES_ + [_CATEGORY_]
 
@@ -71,9 +73,12 @@ def prep_features_df(input_file: str) -> pd.DataFrame:
     print("\n")
     print(df.isnull().sum())
 
-    cat_imputer = SimpleImputer(strategy="constant", fill_value="NA")
-    for col in _ALL_FIELDS_:
-        df[col] = cat_imputer.fit_transform(df[[col]])
+    feature_imputer = SimpleImputer(strategy="constant", fill_value=_UNKNOWN_FEATURE_)
+    for col in _TEXT_FEATURES_:
+        df[col] = feature_imputer.fit_transform(df[[col]])
+
+    category_imputer = SimpleImputer(strategy="constant", fill_value=_UNKNOWN_CATEGORY_)
+    df[_CATEGORY_] = category_imputer.fit_transform(df[[_CATEGORY_]])
 
     # Create a dataframe to hold our feature vectors
     features_df = pd.DataFrame()
@@ -116,7 +121,7 @@ def train_classification_model(input_file: str):
         "subsample": 1,
         "colsample_bytree": 1,
         "objective": "multi:softmax",
-        "num_class": 29,  # Number of classes in your target
+        "num_class": 31,  # there're 31 categories, including the unknown category
         "eval_metric": "mlogloss",
     }
 
@@ -300,7 +305,7 @@ def extract_features_with_openai(input_df: pd.DataFrame) -> pd.DataFrame:
         try:
             categories.append(input_df[input_df["description"] == row["original_string"]]["category"].values[0])
         except IndexError:
-            categories.append("unknown")
+            categories.append(_UNKNOWN_CATEGORY_)
     result_df["category"] = categories
 
     return result_df
