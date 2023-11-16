@@ -88,11 +88,11 @@ def prep_features_df(input_file: str) -> pd.DataFrame:
     return features_df
 
 
-def train_model_with_features(input_file: str):
-    data = prep_features_df(input_file).head(1000)
+def train_model_with_embedding(input_file: str):
+    data = prep_features_df(input_file)
 
     # Separate the features and the target variable
-    X = data.drop(_CATEGORY_, axis=1)  # noqa: VNE001
+    X = data.drop(["original_text", _CATEGORY_], axis=1)  # noqa: VNE001
     y = category_encoder.fit_transform(data[[_CATEGORY_]])  # noqa: VNE001
 
     # Split data into train and test sets
@@ -117,14 +117,14 @@ def train_model_with_features(input_file: str):
     return model
 
 
-def train_model_with_embedding(input_file: str):
+def train_model_with_features(input_file: str):
     data = pd.read_csv(
         input_file,
         encoding="utf-8",
     )
 
     # Separate the features and the target variable
-    X = data.drop(["original_text", _CATEGORY_], axis=1)  # noqa: VNE001
+    X = data.drop(_CATEGORY_, axis=1)  # noqa: VNE001
     y = category_encoder.fit_transform(data[[_CATEGORY_]])  # noqa: VNE001
 
     # Split data into train and test sets

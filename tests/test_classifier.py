@@ -29,8 +29,6 @@ def test_verify():
     output1 = classifier.guess(input1)
     assert output1 is not None
 
-    # full_df = pd.read_excel("data/test1.xlsx", sheet_name="输出（含人工分类结果）")
-
 
 def test_extract_features():
     chunk_size = 30
