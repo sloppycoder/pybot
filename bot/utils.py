@@ -2,12 +2,14 @@ import jieba
 
 
 # Function to tokenize Chinese text using jieba
-def chinese_tokenizer(text):
+def chinese_tokenizer(text) -> list[str]:
     return jieba.lcut(text)
 
 
 def normalize_text(text: str) -> str:
     if isinstance(text, str):
+        text = text.replace("，", "")
+        text = text.replace(",", "")
         text = text.replace("'", "")
         text = text.replace('"', "")
         text = text.replace("\n", " ")
