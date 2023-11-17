@@ -16,7 +16,7 @@ from tenacity import (
     wait_random_exponential,
 )
 
-from .classification import _UNKNOWN_CATEGORY_
+from .classification import _UNKNOWN_
 
 debug = os.environ.get("DEBUG", False)
 
@@ -202,7 +202,7 @@ def extract_features_with_openai(input_df: pd.DataFrame) -> pd.DataFrame:
         try:
             categories.append(input_df[input_df["description"] == row["original_string"]]["category"].values[0])
         except IndexError:
-            categories.append(_UNKNOWN_CATEGORY_)
+            categories.append(_UNKNOWN_)
     result_df["category"] = categories
 
     return result_df

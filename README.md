@@ -64,6 +64,7 @@ cp <source_file> data/test1.xlsx
 # update classifier.py if redis is not running at localhost:6379 without authentication
 # to delete cache entries from this program, set CLEAR_CACHE=1 when running the following
 #
+# output of this test is data/test1.csv.
 # this step can take MANY HOURS to run
 
 DEBUG=1 pytest -s -k test_extract_features
@@ -71,13 +72,22 @@ DEBUG=1 pytest -s -k test_extract_features
 
 # read data/test1.csv from the previous test and feed into XGBoost for model training
 # the code is a VERY ROUGH PROTOTYPE and should be further tuned before serious use
-# with limited data of 1k entires the accuracy is 70%
+# with limited data of 1500 entires the accuracy is 69%
+#
+# this step will save the model and encoders
+#  data/feature1_model.joblib
+#  data/feature1_combined_features.joblib
+#  data/feature1_encoder.joblib
 
 pytest -s -k test_classify
+
+# load model from disk and run one prediction
+pytest -s -k test_predict
 
 ```
 
 ## TODOs
 
 1. re-run feature extract for all 5400 items (will take some time to run)
-2. refactor and tune classification model
+2. improve feature extraction to more accurately extract relevant features
+3. tune the model training logic

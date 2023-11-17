@@ -13,8 +13,7 @@ from bot.utils import normalize_text
 
 
 def test_classify():
-    model = train_model_with_features("data/test1.csv")
-    model.save_model("data/test1.model")
+    train_model_with_features("data/test1.csv", "feature1")
 
 
 def test_alt_classify():
@@ -22,12 +21,24 @@ def test_alt_classify():
     model.save_model("data/embedding1.model")
 
 
-def test_verify():
-    classifier = PartsClassifier("data/test1.model")
+def test_predict():
+    classifier = PartsClassifier("feature1")
 
-    input1 = normalize_text("316L不锈钢管道增压泵 150SG140-26")
-    output1 = classifier.guess(input1)
-    assert output1 is not None
+    part = pd.DataFrame(
+        {
+            "original_string": ["316L不锈钢管道增压泵 150SG140-26"],
+            "type": ["增压泵"],
+            "model_number": ["150SG140-26"],
+            "material": ["316L不锈钢"],
+            "function": ["不详"],
+            "dimension": ["不详"],
+            "brand": ["不详"],
+            "model number": ["不详"],
+            "component": ["不详"],
+        }
+    )
+    pred = classifier.guess(part)
+    assert pred.tolist()[0] == "泵管阀"
 
 
 def test_extract_features():
