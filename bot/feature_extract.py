@@ -1,30 +1,23 @@
-import hashlib
 import json
 import os
 from datetime import datetime
 from typing import Any, Iterator
 
 import openai
-import pandas as pd
-import redis
 from openai.types.chat.chat_completion import ChatCompletion
-from pydantic.tools import parse_obj_as
 from tenacity import (
+    RetryError,
     retry,
     retry_if_exception_type,
     stop_after_attempt,
     wait_random_exponential,
 )
 
+from bot import cache
+
 debug = os.environ.get("DEBUG", False)
 
-_CACHE_VALIDITY_ = 3600 * 72 * 30
-
-cache = redis.Redis(host="localhost", port=6379, db=0)
-
-if os.environ.get("CLEAR_CACHE", False):
-    keys = cache.keys("openai*")
-    cache.delete(*keys)  # type: ignore
+_MODEL_MAP_ = {"35t": "gpt-3.5-turbo-1106", "4pre": "gpt-4-1106-preview"}
 
 
 class InvalidResponse(Exception):
@@ -79,20 +72,12 @@ def walk_response(response: Any, parts: list[str]) -> Iterator[dict]:
                     yield response[key]
 
 
-def cache_key(obj: Any) -> str:
-    """use sha1 hash a json string as the key"""
-    sha1_hash = hashlib.sha1()
-    sha1_hash.update(json.dumps(obj).encode("utf-8"))
-    hex_digest = sha1_hash.hexdigest()
-    return f"openai-{hex_digest}"
-
-
 @retry(
     wait=wait_random_exponential(min=2, max=60),
-    stop=stop_after_attempt(4),
+    stop=stop_after_attempt(6),
     retry=retry_if_exception_type(InvalidResponse),
 )
-def invoke_openai_completion(parts: list[str]) -> ChatCompletion:
+def invoke_openai_completion(parts: list[str], model_version: str) -> ChatCompletion:
     prompt_list = ",".join(parts)
 
     start_t = datetime.now()
@@ -100,24 +85,26 @@ def invoke_openai_completion(parts: list[str]) -> ChatCompletion:
         print(f"===DEBUG: inovking API openai.chat.completions.create(...), input={prompt_list}")
 
     completion = openai.chat.completions.create(
-        model="gpt-4-1106-preview",
+        model=_MODEL_MAP_[model_version],
         messages=[
             {
                 "role": "system",
                 "content": """
-                    i want you to extract features from a series of stirngs, each string typically consists of
-                    a SKU and a brief description with Chinese characters. the features I'm interested in are
-                    "type", "function", "dimension", "brand", "model number", "component", "material".
-                    use "original_string" to save the original input.
-                    retain the original Chinese text for features in output. do not translate them into English
+                    I have a list of parts descriptions from some industrial enviroment. Each entry describes
+                    a part used in a factory, typically consists simple description of the functionality
+                    in Chinese and sometimes brand and model number too. I want to extract features from the strings.
+                    Here are the featurs I'm interested in:
+                        type, function, dimension, model_number,material.
+                    If you see other features, just concatenate them into a single feature called "extra".
+                    use "original_string" to save the original input. retain the original Chinese text for features
+                    in output. Do not translate them into English.
                 """,
             },
             {
                 "role": "user",
                 "content": f"""
-                    extract the features from the following list of strings separtaed by comma.
                     I want to use json output format.
-                    please assign all features to each of the strings in the following list:
+                    Please extract the features from the following list of strings separtaed by comma.
                     {prompt_list}
                 """,
             },
@@ -150,6 +137,7 @@ def invoke_openai_completion(parts: list[str]) -> ChatCompletion:
             print(f"===WARN: {len(parts)} intputs yieleded {n_items} outputs")
             if len(parts) < 10 or abs(n_items - len(parts)) >= 2:
                 # trigger retry only if the discrepenacy is large
+                # TODO: check if this behavior is needed?
                 raise InvalidResponse("number of inputs and outputs are not the same")
 
     except json.JSONDecodeError:
@@ -160,40 +148,27 @@ def invoke_openai_completion(parts: list[str]) -> ChatCompletion:
     return completion
 
 
-def get_openai_response(parts: list[str]) -> Any:
-    key = cache_key(",".join(parts))
+def extract_features_with_openai(items: list[str], model_version: str) -> list[dict]:
+    features = {part: cache.find_extracted_features(part, model_version) for part in items}
+    items_not_in_cache = [k for k, v in features.items() if v is None]
 
-    cached_result = cache.get(key)
-    if cached_result is not None:
-        completion = parse_obj_as(ChatCompletion, json.loads(cached_result))  # type: ignore
-    else:
-        completion = invoke_openai_completion(parts)
-        # store the api response to cache
-        cache.set(key, json.dumps(completion.model_dump()), ex=_CACHE_VALIDITY_)
-        # store the index of part in cache also
-        with cache.pipeline() as pipeline:
-            for part in parts:
-                pipeline.hset("openai-parts-index", part, key)
+    if items_not_in_cache:
+        try:
+            completion = invoke_openai_completion(items_not_in_cache, model_version)
+            response = json.loads(completion.choices[0].message.content)
+            for item in walk_response(response, items_not_in_cache):
+                if "original_string" in item:
+                    features[item["original_string"]] = item
+                    cache.save_extracted_feature(item["original_string"], model_version, item)
+                else:
+                    print("===WARN: original_text not found in response {item}")
+        except RetryError:
+            print("===WARN: failed after configured retries")
 
-    reply = completion.choices[0].message.content
-    return json.loads(reply)
+    # Use a list of keys to avoid RuntimeError for changing dictionary size during iteration
+    for key in list(features.keys()):
+        if features[key] is None:
+            print(f"===WARN: unable to extract features for {key}")
+            features.pop(key)
 
-
-def extract_features_with_openai(parts: list[str]) -> pd.DataFrame:
-    response = get_openai_response(parts)
-
-    result_df = pd.DataFrame()
-
-    # do some post processing to API response
-    for item in walk_response(response, parts):
-        # for some reason openai returns both "model_number" and "model number" for some entires
-        if "model_number" in item:
-            model_num = item.pop("model_number")
-            if "model number" not in item:
-                item["model number"] = model_num
-            else:
-                item["model number"] += f" {model_num}"
-
-        result_df = pd.concat([result_df, pd.DataFrame([item])], ignore_index=True)
-
-    return result_df
+    return list(features.values())

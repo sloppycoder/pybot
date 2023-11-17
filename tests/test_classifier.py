@@ -50,18 +50,21 @@ def test_batch_predict(fromfile):
 
 
 def test_extract_features():
+    # make output looks nicer
+    print("\n")
+
     chunk_size = 30
 
     full_df = pd.read_excel("data/test1.xlsx", sheet_name="输出（含人工分类结果）")
-    test_df = full_df[["物料描述", "一级类目"]].applymap(normalize_text).iloc[1501:]
-    test_df.rename({"物料描述": "description", "一级类目": "category"}, axis=1, inplace=True)
+    test_df = full_df[["物料描述", "一级类目"]].applymap(normalize_text)
+    test_df.rename({"物料描述": "original_string", "一级类目": "category"}, axis=1, inplace=True)
 
     skipped = 0
     features_df = pd.DataFrame()
     for _, chunk in test_df.groupby(np.arange(len(test_df)) // chunk_size):
         try:
             # extract features from openai
-            df = extract_features_with_openai(chunk["description"].tolist())
+            df = pd.DataFrame(extract_features_with_openai(chunk["original_string"].tolist(), "35t"))
 
             if len(df) > 0:
                 # then add category column
@@ -69,7 +72,7 @@ def test_extract_features():
                 for _, row in df.iterrows():
                     try:
                         categories.append(
-                            test_df[test_df["description"] == row["original_string"]]["category"].values[0]
+                            test_df[test_df["original_string"] == row["original_string"]]["category"].values[0]
                         )
                     except IndexError:
                         categories.append(_UNKNOWN_)

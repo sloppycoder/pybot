@@ -10,7 +10,7 @@ license = "MIT"
 [tool.poetry.dependencies]
 python = "^3.11,<3.12"
 python-dotenv = "^1.0.0"
-openai = {version = "1.2.0", extras = ["embeddings", "wandb"]}
+openai = {version = "1.3.2", extras = ["embeddings", "wandb"]}
 google-generativeai = "^0.2.1"
 xgboost = "^2.0.2"
 pandas = "1.5.3"
@@ -18,7 +18,6 @@ scikit-learn = "^1.3.2"
 jieba = "^0.42.1"
 tenacity = "^8.2.3"
 openpyxl = "^3.1.2"
-redis = "^5.0.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
