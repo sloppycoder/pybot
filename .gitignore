@@ -27,4 +27,5 @@ cdk.out
 
 # test data
 data/
+cache/
 *.pickle
