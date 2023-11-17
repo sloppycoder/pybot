@@ -16,8 +16,6 @@ from tenacity import (
     wait_random_exponential,
 )
 
-from .classification import _UNKNOWN_
-
 debug = os.environ.get("DEBUG", False)
 
 _CACHE_VALIDITY_ = 3600 * 72 * 30
@@ -181,11 +179,12 @@ def get_openai_response(parts: list[str]) -> Any:
     return json.loads(reply)
 
 
-def extract_features_with_openai(input_df: pd.DataFrame) -> pd.DataFrame:
-    parts = input_df["description"].tolist()
+def extract_features_with_openai(parts: list[str]) -> pd.DataFrame:
     response = get_openai_response(parts)
 
     result_df = pd.DataFrame()
+
+    # do some post processing to API response
     for item in walk_response(response, parts):
         # for some reason openai returns both "model_number" and "model number" for some entires
         if "model_number" in item:
@@ -196,13 +195,5 @@ def extract_features_with_openai(input_df: pd.DataFrame) -> pd.DataFrame:
                 item["model number"] += f" {model_num}"
 
         result_df = pd.concat([result_df, pd.DataFrame([item])], ignore_index=True)
-
-    categories = []
-    for _, row in result_df.iterrows():
-        try:
-            categories.append(input_df[input_df["description"] == row["original_string"]]["category"].values[0])
-        except IndexError:
-            categories.append(_UNKNOWN_)
-    result_df["category"] = categories
 
     return result_df

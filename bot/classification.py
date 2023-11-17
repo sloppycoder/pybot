@@ -69,10 +69,11 @@ class PartsClassifier:
         self.combined_features = joblib.load(f"data/{model_prefix}_combined_features.joblib")
         self.encoder = joblib.load(f"data/{model_prefix}_encoder.joblib")
 
-    def guess(self, part: str):
-        part_vec = self.combined_features.transform(part)
-        pred = self.model.predict(part_vec)
-        return self.encoder.inverse_transform(pred)
+    def guess(self, parts_df: pd.DataFrame):
+        parts_lst = [pd.DataFrame([row]) for index, row in parts_df.iterrows()]
+        part_vecs = [self.combined_features.transform(part) for part in parts_lst]
+        preds = [self.model.predict(vec) for vec in part_vecs]
+        return [self.encoder.inverse_transform(pred)[0] for pred in preds]
 
 
 def train_model_with_features(input_file: str, model_prefix: str):
@@ -86,12 +87,11 @@ def train_model_with_features(input_file: str, model_prefix: str):
     data = data.drop([col for col in data.columns if col not in _ALL_FIELDS_], axis=1)
 
     # Check for missing values
-    print("\n")
+    print("===before\n")
     print(data.isnull().sum())
 
-    imputer = SimpleImputer(strategy="constant", fill_value=_UNKNOWN_)
-    for col in _ALL_FIELDS_:
-        data[col] = imputer.fit_transform(data[[col]])
+    text_imputer = SimpleImputer(strategy="constant", fill_value=_UNKNOWN_)
+    data[_ALL_FIELDS_] = text_imputer.fit_transform(data[_ALL_FIELDS_])
 
     category_encoder = LabelEncoder()
 
