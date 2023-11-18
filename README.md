@@ -88,7 +88,7 @@ pytest -s --fromfile=tests/parts.txt -k test_batch_predict
 # the result will be saved to data/compare1.csv.
 # currently the hit ratio is 86%
 # need new data to verify
-pytest -s -k classify
+pytest -s -k test_predict_all
 
 
 ```
