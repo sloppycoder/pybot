@@ -72,7 +72,7 @@ pytest --log-cli-level=DEBUG -s -k test_extract_features
 
 # read data/test1.csv from the previous test and feed into XGBoost for model training
 # the code is a VERY ROUGH PROTOTYPE and should be further tuned before serious use
-# with limited data of 1500 entires the accuracy is 69%
+# currently the accuray is 75% using the full dataset of 5300 records
 #
 # this step will save the model and encoders
 #  data/feature1_model.joblib
@@ -81,8 +81,8 @@ pytest --log-cli-level=DEBUG -s -k test_extract_features
 
 pytest -s -k test_classify
 
-# load model from disk and run one prediction
-pytest -s -k test_predict
+# load model from disk, lo and run one prediction
+pytest -s --fromfile=tests/parts.txt -k test_batch_predict
 
 ```
 

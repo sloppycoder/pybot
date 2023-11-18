@@ -76,7 +76,7 @@ def walk_response(response: Any, parts: list[str]) -> Iterator[dict]:
     retry=retry_if_exception_type(InvalidResponse),
 )
 def invoke_openai_completion(parts: list[str], model_version: str) -> ChatCompletion:
-    prompt_list = ",".join(parts)
+    prompt_list = "\n".join(parts)
 
     start_t = datetime.now()
     log.debug(f"inovking API openai.chat.completions.create(...), input={prompt_list}")
@@ -101,7 +101,7 @@ def invoke_openai_completion(parts: list[str], model_version: str) -> ChatComple
                 "role": "user",
                 "content": f"""
                     I want to use json output format.
-                    Please extract the features from the following list of strings separtaed by comma.
+                    Please extract the features from the following list. treat each line as one input
                     {prompt_list}
                 """,
             },

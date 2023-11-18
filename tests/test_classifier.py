@@ -11,14 +11,6 @@ from bot.utils import normalize_text
 def test_classify():
     train_model_with_features("data/test1.csv", "feature1")
 
-
-# very poor performance, not worth keeping
-# def test_alt_classify():
-#     model = train_model_with_embedding("data/embedding1.csv")
-#     model.save_model("data/embedding1.model")
-
-
-def test_single_predict():
     classifier = PartsClassifier("feature1")
 
     part = pd.DataFrame(
@@ -34,6 +26,12 @@ def test_single_predict():
     )
     predictions = classifier.guess(part)
     predictions[0] == "泵管阀"
+
+
+# very poor performance, not worth keeping
+# def test_alt_classify():
+#     model = train_model_with_embedding("data/embedding1.csv")
+#     model.save_model("data/embedding1.model")
 
 
 def test_batch_predict(fromfile):
