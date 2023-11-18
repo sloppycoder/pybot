@@ -130,10 +130,10 @@ def invoke_openai_completion(parts: list[str], model_version: str) -> ChatComple
         n_items = sum(1 for e in walk_response(response, parts))
         if n_items != len(parts):
             log.info(f"{len(parts)} intputs yieleded {n_items} outputs")
-            if len(parts) < 10 or abs(n_items - len(parts)) >= 2:
-                # trigger retry only if the discrepenacy is large
-                # TODO: check if this behavior is needed?
-                raise InvalidResponse("number of inputs and outputs are not the same")
+            # if len(parts) < 10 or abs(n_items - len(parts)) >= 2:
+            # trigger retry only if the discrepenacy is large
+            # TODO: check if should allow some mismatch in some cases
+            raise InvalidResponse("number of inputs and outputs are not the same")
 
     except json.JSONDecodeError:
         log.warn("unable to parse output as json. got {reply}")

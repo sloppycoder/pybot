@@ -70,6 +70,13 @@ class PartsClassifier:
         self.encoder = joblib.load(f"data/{model_prefix}_encoder.joblib")
 
     def guess(self, parts_df: pd.DataFrame):
+        for column in _FEATURE_COLS_:
+            if column not in parts_df.columns:
+                parts_df[column] = ""
+
+        # Replace NaN values with ""
+        parts_df[_FEATURE_COLS_] = parts_df[_FEATURE_COLS_].fillna("")
+
         parts_lst = [pd.DataFrame([row]) for index, row in parts_df.iterrows()]
         part_vecs = [self.combined_features.transform(part) for part in parts_lst]
         preds = [self.model.predict(vec) for vec in part_vecs]

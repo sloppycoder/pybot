@@ -21,7 +21,6 @@ def test_classify():
             "material": ["316L不锈钢"],
             "function": ["不详"],
             "dimension": ["不详"],
-            "extra": [""],
         }
     )
     predictions = classifier.guess(part)
@@ -41,7 +40,6 @@ def test_batch_predict(fromfile):
         parts = [normalize_text(line) for line in input_f.readlines() if len(line.strip()) > 3]
         features = extract_features_with_openai(parts, "35t")
         features_df = pd.DataFrame(features)
-        features_df["extra"] = ["", "", ""]
         predictions = classifier.guess(features_df)
         print(predictions)
 
@@ -86,3 +84,26 @@ def test_extract_features():
 
     if skipped:
         print("===WARN: skipped {skipped} rows")
+
+
+def test_predict_all():
+    print("\n")
+
+    df = pd.read_excel("data/test1.xlsx", sheet_name="输出（含人工分类结果）")
+    df = df[["物料描述", "一级类目"]].applymap(normalize_text)
+    df.rename({"物料描述": "original_string", "一级类目": "category"}, axis=1, inplace=True)
+
+    classifier = PartsClassifier("feature1")
+
+    predicted_categories = []
+    for item in df["original_string"].tolist():
+        features = extract_features_with_openai([item], "35t")[0]
+        features_df = pd.DataFrame([features])
+        predictions = classifier.guess(features_df)
+        predicted_categories.append(predictions[0])
+
+    df["prediction"] = predicted_categories
+    df.to_csv("data/compare1.csv", index=False)
+
+    hit_ratio = len(df[df["category"] == df["prediction"]]) / len(df)
+    print(f"hit ratio: {hit_ratio:.4f}")

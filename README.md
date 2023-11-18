@@ -84,6 +84,13 @@ pytest -s -k test_classify
 # load model from disk, lo and run one prediction
 pytest -s --fromfile=tests/parts.txt -k test_batch_predict
 
+# read all rows from data/test1.csv and run prediction using the trained model
+# the result will be saved to data/compare1.csv.
+# currently the hit ratio is 86%
+# need new data to verify
+pytest -s -k classify
+
+
 ```
 
 ## TODOs
