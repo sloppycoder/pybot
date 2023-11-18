@@ -1,121 +1,105 @@
+import dbm
 import hashlib
 import json
+import logging as log
 import os
-import sqlite3
-from datetime import date
-from sqlite3 import Error
+from datetime import datetime
+
+# this will be initialized the first time cache_dir() is called
+__cache_dir__ = None
 
 
 def cache_dir() -> str:
-    # change this if this is code is included in some package!
-    return os.path.dirname(os.path.dirname(__file__)) + "/cache"
+    global __cache_dir__
+    if __cache_dir__ is None:
+        __cache_dir__ = os.environ.get("CACHE_DIR", None) or "./cache"
+        __cache_dir__ = os.path.abspath(__cache_dir__)
+        log.info(f"cache_dir: {__cache_dir__}")
+    return __cache_dir__
+
+    # def migrate_cache() -> None:
+    #     parent_dir = cache_dir()
+    #     new_parent_dir = parent_dir + "_2"
+    #     db = dbm.open(new_parent_dir + "/cache.db", "c")
+
+    #     for root, dirs, nfiles in os.walk(parent_dir):
+    #         for filename in nfiles:
+    #             if filename.endswith(".json"):
+    #                 cache_file = os.path.join(root, filename)
+    #                 with open(cache_file, "r") as f:
+    #                     data = json.load(f)
+    #                     try:
+    #                         sha1, version = tuple(os.path.basename(cache_file).split("_"))
+    #                         version = version.split(".")[0]
+    #                         original_string = data["original_string"]
+    #                         rel_dir, file_name = cache_path(original_string, version)
+    #                         if sha1 in file_name:
+    #                             log.info(f"migrating cache file: {cache_file} to {rel_dir}")
+    #                             os.makedirs(new_parent_dir + "/" + rel_dir, exist_ok=True)
+    #                             new_filename = rel_dir + "/" + file_name
+    #                             with open(new_parent_dir + "/" + new_filename, "w") as f:
+    #                                 json.dump(data, f)
+    #                             try:
+    #                                 new_dict = json.loads(db[original_string])
+    #                                 new_dict[version] = new_filename
+    #                                 db[original_string] = json.dumps(new_dict)
+    #                             except KeyError:
+    #                                 db[original_string] = json.dumps({version: new_filename})
+    #                         else:
+    #                             log.info(f"skippping cache file: {cache_file}, different sha?")
+    #                     except IndexError:
+    #                         log.info(f"skipping cache file: {cache_file}")
+
+    # db.close()
 
 
-def get_connection() -> sqlite3.Connection:
-    conn = None
-    try:
-        conn = sqlite3.connect(cache_dir() + "/cache.db")
-        cursor = conn.cursor()
-
-        # Check if table cache_index exists
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='features_index' ;")
-        if cursor.fetchone() is None:
-            # Create the table if it doesn't exist
-            cursor.execute(
-                """
-                CREATE TABLE features_index (
-                    original_text TEXT NOT NULL,
-                    version TEXT NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    location TEXT NOT NULL
-                );
-            """
-            )
-    except Error as e:
-        print(e)
-
-    return conn
+def get_cache_db():
+    return
 
 
-def find_extracted_features(original_text: str, version: str) -> dict | None:
-    try:
-        conn = get_connection()
-        cursor = conn.cursor()
-
-        cursor.execute("SELECT * FROM features_index WHERE original_text = ? AND version = ?", (original_text, version))
-        record = cursor.fetchone()
-
-        if record is not None:
-            location = record[3]
-
-            # Check if the file identified by location column exists
-            if os.path.exists(location):
-                # If the file exists, json.load the file content
-                with open(location, "r") as file:
-                    data = json.load(file)
-                return data
-            else:
-                # If the file does not exist, delete the database record
-                cursor.execute(
-                    "DELETE FROM features_index WHERE original_text = ? AND version = ?",
-                    (original_text, version),
-                )
-                conn.commit()
-
-    except Error as e:
-        print(e)
-    finally:
-        if conn:
-            conn.close()
-
-    return None
+def find_extracted_features(key: str, version: str) -> dict | None:
+    with dbm.open(cache_dir() + "/cache.db", "c") as db:
+        try:
+            cached = db[key]
+            location = json.loads(cached)[version]
+            cache_file = cache_dir() + "/" + location
+            try:
+                with open(cache_file, "r") as f:
+                    return json.load(f)
+            except (json.JSONDecodeError, IOError):
+                # remove stale cache entry
+                del db[key]
+                return None
+        except KeyError:
+            return None
 
 
-def cache_file_name(original_name: str, version: str) -> tuple[str, str]:
-    """use today/<sha1 2 digits>/<sha1>.json as cache file name"""
+def cache_path(key: str, version: str) -> tuple[str, str, str]:
+    """use yyyymmdd/HHMM/<sha1>_<version>.json as cache file name"""
     sha1_hash = hashlib.sha1()
-    sha1_hash.update(original_name.encode("utf-8"))
+    sha1_hash.update(key.encode("utf-8"))
     hex_digest = sha1_hash.hexdigest()
 
-    today = date.today().strftime("%Y%m%d")
+    day, hm = tuple(datetime.today().strftime("%Y%m%d-%H%M").split("-"))
+    rel_dir = f"{version}/{day}/{hm}"
 
-    return f"{cache_dir()}/{today}/{hex_digest[:2]}", f"{hex_digest}_{version}.json"
+    return rel_dir, f"{hex_digest}_{version}.json"
 
 
-def save_extracted_feature(original_text: str, version: str, feature_dict: str) -> None:
-    try:
-        conn = get_connection()
-        cursor = conn.cursor()
+def save_extracted_feature(key: str, version: str, data: str) -> None:
+    rel_dir, filename = cache_path(key, version)
+    rel_file_path = rel_dir + "/" + filename
 
-        # json.dump feature_dict to a file
-        dirp, file_name = cache_file_name(original_text, version)
-        cache_file = f"{dirp}/{file_name}"
-        os.makedirs(dirp, exist_ok=True)
-        with open(cache_file, "w") as file:
-            json.dump(feature_dict, file)
+    os.makedirs(cache_dir() + "/" + rel_dir, exist_ok=True)
+    with open(cache_dir() + "/" + rel_file_path, "w") as f:
+        json.dump(data, f)
 
-        # Run a select on the table with original_text and version
-        cursor.execute("SELECT * FROM features_index WHERE original_text = ? AND version = ?", (original_text, version))
-        record = cursor.fetchone()
-
-        if record is not None:
-            # If the record exists, update the location with file name and update created_at with current timestamp
-            cursor.execute(
-                "UPDATE features_index SET location = ?, created_at = CURRENT_TIMESTAMP "
-                + "WHERE original_text = ? AND version = ?",
-                (cache_file, original_text, version),
-            )
-        else:
-            # If the record does not exist, insert a new record
-            cursor.execute(
-                "INSERT INTO features_index(original_text, version, location) VALUES (?, ?, ?)",
-                (original_text, version, cache_file),
-            )
-
-        conn.commit()
-
-    except Error as e:
-        print(e)
-    finally:
-        if conn:
-            conn.close()
+    with dbm.open(cache_dir() + "/cache.db", "c") as db:
+        try:
+            # update an existing entry
+            cached = json.loads(db[key])
+            cached[version] = rel_file_path
+            db[key] = json.dumps(cached)
+        except KeyError:
+            # create new entry
+            db[key] = json.dumps({version: rel_file_path})

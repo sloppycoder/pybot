@@ -16,16 +16,14 @@ from bot.utils import chinese_tokenizer
 
 debug = os.environ.get("DEBUG", False)
 
-
 _FEATURE_COLS_ = [
     "original_string",
     "type",
     "function",
     "dimension",
-    "brand",
-    "model number",
-    "component",
+    "model_number",
     "material",
+    "extra",
 ]
 
 _TARGET_COL_ = "category"
