@@ -12,6 +12,7 @@ from sklearn.metrics import accuracy_score, classification_report
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import FeatureUnion, Pipeline
 from sklearn.preprocessing import LabelEncoder
+from tabulate import tabulate
 
 from bot.utils import chinese_tokenizer
 
@@ -127,13 +128,14 @@ def train_model_with_features(input_file: str, model_prefix: str):
     predictions = model.predict(X_test)
 
     accuracy = accuracy_score(y_test, predictions)
-    log.info(f"Accuracy: {accuracy}")
+    print(f"\nAccuracy: {accuracy}\n")
 
     # Filter le.classes_ to keep only those classes that were predicted
     all_categories = np.unique(np.concatenate((y_test, predictions)))
     all_labels = [label.strip()[:5] for label in category_encoder.classes_[all_categories]]
-    report = classification_report(y_test, predictions, target_names=all_labels)
-    log.info("\n" + report)
+    report = classification_report(y_test, predictions, target_names=all_labels, output_dict=True)
+    report_df = pd.DataFrame(report).T
+    print(tabulate(report_df, headers="keys", tablefmt="plain", showindex=True, floatfmt=".2f"))
 
     joblib.dump(model, f"data/{model_prefix}_model.joblib")
     joblib.dump(combined_features, f"data/{model_prefix}_combined_features.joblib")
