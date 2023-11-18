@@ -79,7 +79,7 @@ pytest --log-cli-level=DEBUG -s -k test_extract_features
 #  data/feature1_combined_features.joblib
 #  data/feature1_encoder.joblib
 
-pytest -s -k test_classify
+pytest -s -k test_train_model_with_feature
 
 # load model from disk, lo and run one prediction
 pytest -s --fromfile=tests/parts.txt -k test_batch_predict

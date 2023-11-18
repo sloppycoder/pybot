@@ -1675,6 +1675,17 @@ files = [
 ]
 
 [[package]]
+name = "types-tabulate"
+version = "0.9.0.3"
+description = "Typing stubs for tabulate"
+optional = false
+python-versions = "*"
+files = [
+    {file = "types-tabulate-0.9.0.3.tar.gz", hash = "sha256:197651f9d6467193cd166d8500116a6d3a26f2a4eb2db093bc9535ee1c0be55e"},
+    {file = "types_tabulate-0.9.0.3-py3-none-any.whl", hash = "sha256:462d1b62e01728416e8277614d6a3eb172d53a8efaf04a04a973ff2dd45238f6"},
+]
+
+[[package]]
 name = "types-toml"
 version = "0.10.8.7"
 description = "Typing stubs for toml"
@@ -1773,4 +1784,4 @@ scikit-learn = ["scikit-learn"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11,<3.12"
-content-hash = "fa2b133117186ab56d82401c4eabcddbcb02ad62ef017815ea263f52f10a6575"
+content-hash = "6bb0e74368bd902ee05bfffe57e33e46dc7b112b042d27394493aab3a7eb7145"

@@ -14,6 +14,7 @@ from tenacity import (
 )
 
 from bot import cache
+from bot.utils import remove_fillers
 
 _MODEL_MAP_ = {"35t": "gpt-3.5-turbo-1106", "4pre": "gpt-4-1106-preview"}
 
@@ -129,7 +130,7 @@ def invoke_openai_completion(parts: list[str], model_version: str) -> ChatComple
         # the output is not consistent with the input
         n_items = sum(1 for e in walk_response(response, parts))
         if n_items != len(parts):
-            log.info(f"{len(parts)} intputs yieleded {n_items} outputs")
+            log.info(f"{len(parts)} intputs yielded {n_items} outputs")
             # if len(parts) < 10 or abs(n_items - len(parts)) >= 2:
             # trigger retry only if the discrepenacy is large
             # TODO: check if should allow some mismatch in some cases
@@ -142,19 +143,19 @@ def invoke_openai_completion(parts: list[str], model_version: str) -> ChatComple
     return completion
 
 
-def extract_features_with_openai(items: list[str], model_version: str) -> list[dict]:
+def extract_features_with_openai(items: list[str], model_version: str) -> list[dict] | None:
     features = {part: cache.find_extracted_features(part, model_version) for part in items}
     items_not_in_cache = [k for k, v in features.items() if v is None]
 
     if items_not_in_cache:
         try:
             completion = invoke_openai_completion(items_not_in_cache, model_version)
-            response = json.loads(completion.choices[0].message.content)
+            response = json.loads(completion.choices[0].message.content)  # type: ignore
             for item in walk_response(response, items_not_in_cache):
-                if "original_string" in item:
+                try:
                     features[item["original_string"]] = item
                     cache.save_extracted_feature(item["original_string"], model_version, item)
-                else:
+                except KeyError:
                     log.warn(f"original_text not found in response {item}")
         except RetryError:
             log.warn("failed after configured retries")
@@ -165,4 +166,5 @@ def extract_features_with_openai(items: list[str], model_version: str) -> list[d
             log.warn(f"unable to extract features for {key}")
             features.pop(key)
 
-    return list(features.values())
+    result = list(features.values())
+    return remove_fillers(result)

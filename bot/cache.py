@@ -74,7 +74,7 @@ def find_extracted_features(key: str, version: str) -> dict | None:
             return None
 
 
-def cache_path(key: str, version: str) -> tuple[str, str, str]:
+def cache_path(key: str, version: str) -> tuple[str, str]:
     """use yyyymmdd/HHMM/<sha1>_<version>.json as cache file name"""
     sha1_hash = hashlib.sha1()
     sha1_hash.update(key.encode("utf-8"))
@@ -86,7 +86,7 @@ def cache_path(key: str, version: str) -> tuple[str, str, str]:
     return rel_dir, f"{hex_digest}_{version}.json"
 
 
-def save_extracted_feature(key: str, version: str, data: str) -> None:
+def save_extracted_feature(key: str, version: str, data: dict) -> None:
     rel_dir, filename = cache_path(key, version)
     rel_file_path = rel_dir + "/" + filename
 

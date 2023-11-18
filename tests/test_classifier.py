@@ -8,23 +8,22 @@ from bot.feature_extract import InvalidResponse, extract_features_with_openai
 from bot.utils import normalize_text
 
 
-def test_classify():
+def test_train_model_with_feature():
     train_model_with_features("data/test1.csv", "feature1")
 
     classifier = PartsClassifier("feature1")
 
-    part = pd.DataFrame(
-        {
-            "original_string": ["316L不锈钢管道增压泵 150SG140-26"],
-            "type": ["增压泵"],
-            "model_number": ["150SG140-26"],
-            "material": ["316L不锈钢"],
-            "function": ["不详"],
-            "dimension": ["不详"],
-        }
-    )
-    predictions = classifier.guess(part)
-    predictions[0] == "泵管阀"
+    part = {
+        "original_string": "316L不锈钢管道增压泵 150SG140-26",
+        "type": "增压泵",
+        "model_number": "150SG140-26",
+        "material": "316L不锈钢",
+        "function": "不详",
+        "dimension": "不详",
+    }
+
+    predictions = classifier.guess([part])
+    predictions[part["original_string"]] == "泵管阀"
 
 
 # very poor performance, not worth keeping
@@ -39,22 +38,18 @@ def test_batch_predict(fromfile):
     with open(fromfile, "r") as input_f:
         parts = [normalize_text(line) for line in input_f.readlines() if len(line.strip()) > 3]
         features = extract_features_with_openai(parts, "35t")
-        features_df = pd.DataFrame(features)
-        predictions = classifier.guess(features_df)
+        predictions = classifier.guess(features)
         print(predictions)
 
 
 def test_extract_features():
-    # make output looks nicer
-    print("\n")
-
     chunk_size = 30
 
     full_df = pd.read_excel("data/test1.xlsx", sheet_name="输出（含人工分类结果）")
     test_df = full_df[["物料描述", "一级类目"]].applymap(normalize_text)
     test_df.rename({"物料描述": "original_string", "一级类目": "category"}, axis=1, inplace=True)
+    test_df = test_df[test_df["original_string"].notna() & (test_df["original_string"] != "")]
 
-    skipped = 0
     features_df = pd.DataFrame()
     for _, chunk in test_df.groupby(np.arange(len(test_df)) // chunk_size):
         try:
@@ -80,29 +75,22 @@ def test_extract_features():
                 print(f"===INFO: writing {len(features_df)} rows")
         except InvalidResponse as e:
             print(f"===ERROR: {e}")
-            skipped += len(chunk)
-
-    if skipped:
-        print("===WARN: skipped {skipped} rows")
 
 
 def test_predict_all():
-    print("\n")
-
     df = pd.read_excel("data/test1.xlsx", sheet_name="输出（含人工分类结果）")
     df = df[["物料描述", "一级类目"]].applymap(normalize_text)
     df.rename({"物料描述": "original_string", "一级类目": "category"}, axis=1, inplace=True)
 
     classifier = PartsClassifier("feature1")
 
-    predicted_categories = []
-    for item in df["original_string"].tolist():
-        features = extract_features_with_openai([item], "35t")[0]
-        features_df = pd.DataFrame([features])
-        predictions = classifier.guess(features_df)
-        predicted_categories.append(predictions[0])
+    items = df["original_string"].tolist()
+    features = extract_features_with_openai(items, "35t")
+    predicted_categories = classifier.guess(features)
 
-    df["prediction"] = predicted_categories
+    df["prediction"] = df["original_string"].apply(
+        lambda key: predicted_categories[key] if key in predicted_categories else _UNKNOWN_
+    )
     df.to_csv("data/compare1.csv", index=False)
 
     hit_ratio = len(df[df["category"] == df["prediction"]]) / len(df)

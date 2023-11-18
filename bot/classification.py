@@ -1,5 +1,4 @@
 import logging as log
-import os
 
 import joblib
 import numpy as np
@@ -14,21 +13,7 @@ from sklearn.pipeline import FeatureUnion, Pipeline
 from sklearn.preprocessing import LabelEncoder
 from tabulate import tabulate
 
-from bot.utils import chinese_tokenizer
-
-debug = os.environ.get("DEBUG", False)
-
-_FEATURE_COLS_ = [
-    "original_string",
-    "type",
-    "function",
-    "dimension",
-    "model_number",
-    "material",
-    "extra",
-]
-
-_TARGET_COL_ = "category"
+from bot.utils import _FEATURE_COLS_, _TARGET_COL_, chinese_tokenizer, remove_fillers
 
 _UNKNOWN_ = "不详"
 
@@ -69,18 +54,19 @@ class PartsClassifier:
         self.combined_features = joblib.load(f"data/{model_prefix}_combined_features.joblib")
         self.encoder = joblib.load(f"data/{model_prefix}_encoder.joblib")
 
-    def guess(self, parts_df: pd.DataFrame):
-        for column in _FEATURE_COLS_:
-            if column not in parts_df.columns:
-                parts_df[column] = ""
+    def guess(self, parts: list[dict]) -> dict[str, str] | None:
+        remove_fillers(parts)
+        part_vecs = [self.combined_features.transform(pd.DataFrame([part])) for part in parts]
+        encoded_predictions = [self.model.predict(vec) for vec in part_vecs]
+        predictions = [self.encoder.inverse_transform(pred)[0] for pred in encoded_predictions]
 
-        # Replace NaN values with ""
-        parts_df[_FEATURE_COLS_] = parts_df[_FEATURE_COLS_].fillna("")
+        if len(predictions) == len(parts):
+            keys = [part["original_string"] for part in parts]
+            result = dict(zip(keys, predictions))
+            return result
 
-        parts_lst = [pd.DataFrame([row]) for index, row in parts_df.iterrows()]
-        part_vecs = [self.combined_features.transform(part) for part in parts_lst]
-        preds = [self.model.predict(vec) for vec in part_vecs]
-        return [self.encoder.inverse_transform(pred)[0] for pred in preds]
+        log.warn(f"number of predictions does not match number of parts {parts}")
+        return None
 
 
 def train_model_with_features(input_file: str, model_prefix: str):
@@ -141,8 +127,8 @@ def train_model_with_features(input_file: str, model_prefix: str):
     all_categories = np.unique(np.concatenate((y_test, predictions)))
     all_labels = [label.strip()[:5] for label in category_encoder.classes_[all_categories]]
     report = classification_report(y_test, predictions, target_names=all_labels, output_dict=True)
-    report_df = pd.DataFrame(report).T
-    print(tabulate(report_df, headers="keys", tablefmt="plain", showindex=True, floatfmt=".2f"))
+    report = pd.DataFrame(report).T.to_dict()
+    print(tabulate(report, headers="keys", tablefmt="plain", showindex=True, floatfmt=".2f"))
 
     joblib.dump(model, f"data/{model_prefix}_model.joblib")
     joblib.dump(combined_features, f"data/{model_prefix}_combined_features.joblib")
