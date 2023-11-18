@@ -29,9 +29,7 @@ def test_single_predict():
             "material": ["316L不锈钢"],
             "function": ["不详"],
             "dimension": ["不详"],
-            "brand": ["不详"],
-            "model number": ["不详"],
-            "component": ["不详"],
+            "extra": [""],
         }
     )
     predictions = classifier.guess(part)
@@ -43,8 +41,9 @@ def test_batch_predict(fromfile):
 
     with open(fromfile, "r") as input_f:
         parts = [normalize_text(line) for line in input_f.readlines() if len(line.strip()) > 3]
-        features_df = extract_features_with_openai(parts)
-        features_df = features_df.applymap(lambda elem: _UNKNOWN_ if not elem else elem)
+        features = extract_features_with_openai(parts, "35t")
+        features_df = pd.DataFrame(features)
+        features_df["extra"] = ["", "", ""]
         predictions = classifier.guess(features_df)
         print(predictions)
 

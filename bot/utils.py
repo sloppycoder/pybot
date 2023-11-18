@@ -14,6 +14,9 @@ def normalize_text(text: str) -> str:
         text = text.replace('"', "")
         text = text.replace("\n", " ")
         text = text.replace("  ", " ")
+        text = text.replace("  ", " ")
+        text = text.replace("  ", " ")
+        text = text.replace("  ", " ")
         return text.strip()
     else:
         # actually it's not text, but...

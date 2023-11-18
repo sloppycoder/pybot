@@ -56,18 +56,18 @@ mkdir data
 cp <source_file> data/test1.xlsx
 
 # run feature extract to call OpenAI API to extract features
-# OpenAI API currently runs very slow due to high demand, each row requires 2-3 seconds
-# to execute, for now this test only uses first 1500 rows
+# OpenAI API to extract features from a given part description.
+# at the moment (Nov 2023), gpt-3.5-turbo-1106 seems to have simliar output to gpt-4
+# and runs much faster (and cheaper too).
+#
 # this test case will create file data/test1.csv which will be used in the next step
 # setting DEBUG=1 will display result payload from openai APIs
-# redis cache is used to store openai API response to reduce debug time.
-# update classifier.py if redis is not running at localhost:6379 without authentication
-# to delete cache entries from this program, set CLEAR_CACHE=1 when running the following
 #
-# output of this test is data/test1.csv.
-# this step can take MANY HOURS to run
+# the features extract from openai API will be saved in cache directory
+# so re-running this test will not trigger API calls unless the cache is deleted
+#
 
-DEBUG=1 pytest -s -k test_extract_features
+pytest --log-cli-level=DEBUG -s -k test_extract_features
 
 
 # read data/test1.csv from the previous test and feed into XGBoost for model training
@@ -88,6 +88,6 @@ pytest -s -k test_predict
 
 ## TODOs
 
-1. re-run feature extract for all 5400 items (will take some time to run)
+1. re-run feature extract for all 5400 items (will take some time to run) (done)
 2. improve feature extraction to more accurately extract relevant features
 3. tune the model training logic

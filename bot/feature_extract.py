@@ -1,5 +1,5 @@
 import json
-import os
+import logging as log
 from datetime import datetime
 from typing import Any, Iterator
 
@@ -14,8 +14,6 @@ from tenacity import (
 )
 
 from bot import cache
-
-debug = os.environ.get("DEBUG", False)
 
 _MODEL_MAP_ = {"35t": "gpt-3.5-turbo-1106", "4pre": "gpt-4-1106-preview"}
 
@@ -81,8 +79,7 @@ def invoke_openai_completion(parts: list[str], model_version: str) -> ChatComple
     prompt_list = ",".join(parts)
 
     start_t = datetime.now()
-    if debug:
-        print(f"===DEBUG: inovking API openai.chat.completions.create(...), input={prompt_list}")
+    log.debug(f"inovking API openai.chat.completions.create(...), input={prompt_list}")
 
     completion = openai.chat.completions.create(
         model=_MODEL_MAP_[model_version],
@@ -113,12 +110,11 @@ def invoke_openai_completion(parts: list[str], model_version: str) -> ChatComple
     )
 
     if completion.choices[0].finish_reason != "stop":
-        print("===WARN: completion is not finished")
-        print(completion.choices[0].finish_reason)
+        log.info(f"completion is not finished: reason={completion.choices[0].finish_reason}")
         raise InvalidResponse("completion is not finished")
     else:
-        print(f"===INFO: {len(parts)} inputs completed in {(datetime.now()-start_t).total_seconds()} seconds")
-        print(completion.usage)
+        log.info(f"{len(parts)} inputs completed in {(datetime.now()-start_t).total_seconds()} seconds")
+        log.info(completion.usage)
 
     reply = completion.choices[0].message.content
 
@@ -127,22 +123,20 @@ def invoke_openai_completion(parts: list[str], model_version: str) -> ChatComple
 
     try:
         response = json.loads(reply)
-        if debug:
-            print(json.dumps(response, indent=4, ensure_ascii=False))
+        log.debug(json.dumps(response, indent=4, ensure_ascii=False))
 
         # the logic below counts number of responses and raise retry if
         # the output is not consistent with the input
         n_items = sum(1 for e in walk_response(response, parts))
         if n_items != len(parts):
-            print(f"===WARN: {len(parts)} intputs yieleded {n_items} outputs")
+            log.info(f"{len(parts)} intputs yieleded {n_items} outputs")
             if len(parts) < 10 or abs(n_items - len(parts)) >= 2:
                 # trigger retry only if the discrepenacy is large
                 # TODO: check if this behavior is needed?
                 raise InvalidResponse("number of inputs and outputs are not the same")
 
     except json.JSONDecodeError:
-        print("===WARN: unable to parse output as json")
-        print(reply)
+        log.warn("unable to parse output as json. got {reply}")
         raise InvalidResponse("unable to parse output as json")
 
     return completion
@@ -161,14 +155,14 @@ def extract_features_with_openai(items: list[str], model_version: str) -> list[d
                     features[item["original_string"]] = item
                     cache.save_extracted_feature(item["original_string"], model_version, item)
                 else:
-                    print("===WARN: original_text not found in response {item}")
+                    log.warn(f"original_text not found in response {item}")
         except RetryError:
-            print("===WARN: failed after configured retries")
+            log.warn("failed after configured retries")
 
     # Use a list of keys to avoid RuntimeError for changing dictionary size during iteration
     for key in list(features.keys()):
         if features[key] is None:
-            print(f"===WARN: unable to extract features for {key}")
+            log.warn(f"unable to extract features for {key}")
             features.pop(key)
 
     return list(features.values())

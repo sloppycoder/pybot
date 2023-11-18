@@ -1,3 +1,4 @@
+import logging as log
 import os
 
 import joblib
@@ -84,9 +85,13 @@ def train_model_with_features(input_file: str, model_prefix: str):
     # drop columsn we're not interested in
     data = data.drop([col for col in data.columns if col not in _ALL_FIELDS_], axis=1)
 
+    # some category have very few samples, remove them
+    class_counts = data.groupby(_TARGET_COL_)[_TARGET_COL_].count()
+    bad_categories = class_counts[class_counts < 5].index.tolist()
+    data = data[~data[_TARGET_COL_].isin(bad_categories)]
+
     # Check for missing values
-    print("===before\n")
-    print(data.isnull().sum())
+    log.info(f"\n{data.isnull().sum()}")
 
     text_imputer = SimpleImputer(strategy="constant", fill_value=_UNKNOWN_)
     data[_ALL_FIELDS_] = text_imputer.fit_transform(data[_ALL_FIELDS_])
@@ -108,7 +113,7 @@ def train_model_with_features(input_file: str, model_prefix: str):
         "subsample": 1,
         "colsample_bytree": 1,
         "objective": "multi:softmax",
-        "num_class": 30,  # there're 31 categories, including the unknown category
+        "num_class": len(category_encoder.classes_),
         "eval_metric": "mlogloss",
         "verbosity": 2,
         "use_label_encoder": False,
@@ -116,19 +121,19 @@ def train_model_with_features(input_file: str, model_prefix: str):
 
     # Training the XGBoost classifier
     model = xgb.XGBClassifier(**params)
-    model.fit(X_train, y_train)
+    model.fit(X_train, y_train, eval_set=[(X_test, y_test)], early_stopping_rounds=10)
 
     # Making predictions and evaluating the model
     predictions = model.predict(X_test)
 
     accuracy = accuracy_score(y_test, predictions)
-    print(f"Accuracy: {accuracy}")
+    log.info(f"Accuracy: {accuracy}")
 
     # Filter le.classes_ to keep only those classes that were predicted
     all_categories = np.unique(np.concatenate((y_test, predictions)))
     all_labels = [label.strip()[:5] for label in category_encoder.classes_[all_categories]]
     report = classification_report(y_test, predictions, target_names=all_labels)
-    print(report)
+    log.info("\n" + report)
 
     joblib.dump(model, f"data/{model_prefix}_model.joblib")
     joblib.dump(combined_features, f"data/{model_prefix}_combined_features.joblib")
@@ -149,7 +154,7 @@ def train_model_with_embedding(input_file: str):
     y = category_encoder.fit_transform(data[[_TARGET_COL_]])  # noqa: VNE001
 
     # Split data into train and test sets
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=42)
 
     # training parametrs
     params = {
@@ -159,7 +164,7 @@ def train_model_with_embedding(input_file: str):
         "subsample": 1,
         "colsample_bytree": 1,
         "objective": "multi:softmax",
-        "num_class": 30,  # there're 31 categories, including the unknown category
+        "num_class": len(category_encoder.classes_),
         "eval_metric": "mlogloss",
         "verbosity": 2,
         "use_label_encoder": False,
@@ -172,12 +177,12 @@ def train_model_with_embedding(input_file: str):
     predictions = model.predict(X_test)
 
     accuracy = accuracy_score(y_test, predictions)
-    print(f"Accuracy: {accuracy}")
+    log.info(f"Accuracy: {accuracy}")
 
     # Filter le.classes_ to keep only those classes that were predicted
     all_categories = np.unique(np.concatenate((y_test, predictions)))
     all_labels = [label.strip()[:5] for label in category_encoder.classes_[all_categories]]
     report = classification_report(y_test, predictions, target_names=all_labels)
-    print(report)
+    log.info("\n" + report)
 
     return model
