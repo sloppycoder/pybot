@@ -96,5 +96,5 @@ pytest -s -k test_predict_all
 ## TODOs
 
 1. re-run feature extract for all 5400 items (will take some time to run) (done)
-2. improve feature extraction to more accurately extract relevant features
+2. improve feature extraction to more accurately extract relevant features. (added memo column to use in feature extraction, got marginal improvement only)
 3. tune the model training logic

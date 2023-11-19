@@ -114,14 +114,14 @@ def train_model_with_features(input_file: str, model_prefix: str):
     predictions = model.predict(X_test)
 
     accuracy = accuracy_score(y_test, predictions)
-    print(f"\nAccuracy: {accuracy}\n")
+    log.info(f"Accuracy: {accuracy}")
 
     # Filter le.classes_ to keep only those classes that were predicted
     all_categories = np.unique(np.concatenate((y_test, predictions)))
     all_labels = [label.strip()[:5] for label in category_encoder.classes_[all_categories]]
     report = classification_report(y_test, predictions, target_names=all_labels, output_dict=True)
     report = pd.DataFrame(report).T.to_dict()
-    print(tabulate(report, headers="keys", tablefmt="plain", showindex=True, floatfmt=".2f"))
+    log.info("\n" + tabulate(report, headers="keys", tablefmt="plain", showindex=True, floatfmt=".2f"))
 
     joblib.dump(model, f"{model_prefix}_model.joblib")
     joblib.dump(combined_features, f"{model_prefix}_pipeline.joblib")
