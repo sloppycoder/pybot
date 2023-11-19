@@ -1,5 +1,3 @@
-import logging as log
-
 import joblib
 import numpy as np
 import pandas as pd
@@ -13,6 +11,7 @@ from sklearn.pipeline import FeatureUnion, Pipeline
 from sklearn.preprocessing import LabelEncoder
 from tabulate import tabulate
 
+from bot import log
 from bot.utils import _FEATURE_COLS_, _TARGET_COL_, blank_filler, chinese_tokenizer
 
 _ALL_FIELDS_ = _FEATURE_COLS_ + [_TARGET_COL_]
@@ -48,9 +47,9 @@ combined_features = FeatureUnion(
 
 class PartsClassifier:
     def __init__(self, model_prefix: str):
-        self.model = joblib.load(f"data/{model_prefix}_model.joblib")
-        self.combined_features = joblib.load(f"data/{model_prefix}_combined_features.joblib")
-        self.encoder = joblib.load(f"data/{model_prefix}_encoder.joblib")
+        self.model = joblib.load(f"{model_prefix}_model.joblib")
+        self.combined_features = joblib.load(f"{model_prefix}_pipeline.joblib")
+        self.encoder = joblib.load(f"{model_prefix}_encoder.joblib")
 
     def guess(self, parts: pd.DataFrame) -> pd.DataFrame:
         unwanted_cols = [col for col in parts.columns if col not in _FEATURE_COLS_]
@@ -124,9 +123,9 @@ def train_model_with_features(input_file: str, model_prefix: str):
     report = pd.DataFrame(report).T.to_dict()
     print(tabulate(report, headers="keys", tablefmt="plain", showindex=True, floatfmt=".2f"))
 
-    joblib.dump(model, f"data/{model_prefix}_model.joblib")
-    joblib.dump(combined_features, f"data/{model_prefix}_combined_features.joblib")
-    joblib.dump(category_encoder, f"data/{model_prefix}_encoder.joblib")
+    joblib.dump(model, f"{model_prefix}_model.joblib")
+    joblib.dump(combined_features, f"{model_prefix}_pipeline.joblib")
+    joblib.dump(category_encoder, f"{model_prefix}_encoder.joblib")
 
 
 def train_model_with_embedding(input_file: str):

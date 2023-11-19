@@ -1,5 +1,4 @@
 import json
-import logging as log
 from datetime import datetime
 from typing import Any, Iterator
 
@@ -14,7 +13,7 @@ from tenacity import (
     wait_random_exponential,
 )
 
-from bot import cache
+from bot import cache, log
 from bot.utils import blank_filler
 
 _MODEL_MAP_ = {"35t": "gpt-3.5-turbo-1106", "4pre": "gpt-4-1106-preview"}
@@ -115,7 +114,7 @@ def invoke_openai_completion(parts: list[str], model_version: str) -> ChatComple
         log.info(f"completion is not finished: reason={completion.choices[0].finish_reason}")
         raise InvalidResponse("completion is not finished")
     else:
-        log.info(f"{len(parts)} inputs completed in {(datetime.now()-start_t).total_seconds()} seconds")
+        log.info(f"{len(parts)} inputs completed in {(datetime.now()-start_t).total_seconds():.3f} seconds")
         log.info(completion.usage)
 
     reply = completion.choices[0].message.content
@@ -147,27 +146,31 @@ def invoke_openai_completion(parts: list[str], model_version: str) -> ChatComple
 def extract_features_with_openai(input_df: pd.DataFrame, key_col: str, model_version: str) -> pd.DataFrame:
     all_features = {key: cache.find_extracted_features(key, model_version) for key in input_df[key_col]}
     items_not_in_cache = [k for k, v in all_features.items() if v is None]
+    log.info(
+        f"found {len(all_features)} items in cache, {len(items_not_in_cache)} items will be retrieved from openai api"
+    )
 
-    if items_not_in_cache:
-        chunk_size = 20
-        # call openai with a chunk of items at a time
-        # otherwise will exceed input lenght limit
-        for i in range(0, len(items_not_in_cache), chunk_size):
-            part_list = items_not_in_cache[i : i + chunk_size]
-            log.info(f"calling openai with {part_list}")
+    # call openai with a chunk of items at a time
+    # otherwise will exceed input lenght limit
+    chunk_size, count = 20, 0
+    for i in range(0, len(items_not_in_cache), chunk_size):
+        part_list = items_not_in_cache[i : i + chunk_size]
 
-            try:
-                completion = invoke_openai_completion(part_list, model_version)
-                response = json.loads(completion.choices[0].message.content)  # type: ignore
-                for item in walk_response(response, items_not_in_cache):
-                    try:
-                        key = item["original_string"]
-                        all_features[key] = item
-                        cache.save_extracted_feature(key, model_version, item)
-                    except KeyError:
-                        log.warn(f"original_text not found in response {item}")
-            except RetryError:
-                log.warn("failed after configured retries")
+        try:
+            completion = invoke_openai_completion(part_list, model_version)
+            response = json.loads(completion.choices[0].message.content)  # type: ignore
+            for item in walk_response(response, items_not_in_cache):
+                try:
+                    key = item["original_string"]
+                    all_features[key] = item
+                    cache.save_extracted_feature(key, model_version, item)
+                    count += 1
+                except KeyError:
+                    log.warn(f"original_text not found in response {item}")
+        except RetryError:
+            log.warn("failed after configured retries")
+
+        log.info(f"extracted fatures for {count} items, total {len(items_not_in_cache)}")
 
     result_df = pd.DataFrame.from_dict(all_features, orient="index").applymap(blank_filler)
     return pd.merge(input_df, result_df, on=["original_string"])

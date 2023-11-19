@@ -1,9 +1,10 @@
 import dbm
 import hashlib
 import json
-import logging as log
 import os
 from datetime import datetime
+
+from bot import log
 
 # this will be initialized the first time cache_dir() is called
 __cache_dir__ = None

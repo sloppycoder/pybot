@@ -35,13 +35,13 @@ def normalize_text(text: str) -> str:
     elif isinstance(text, float) and np.isnan(text):
         return ""
     elif isinstance(text, str):
-        text = text.strip()
-        text = text.replace("，", "")
+        text = text.replace("\n", " ")
+        text = text.replace("，", "")  # the wide comma
         text = text.replace(",", "")
         text = text.replace("'", "")
         text = text.replace('"', "")
-        text = text.replace("\n", " ")
-        text = text.replace("\xa0", " ")
+        text = text.strip()
+        text = text.replace("\xa0", " ")  # nospace break
         text = text.replace("   ", " ")
         text = text.replace("  ", " ")
         text = text.replace("  ", " ")
