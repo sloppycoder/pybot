@@ -14,7 +14,7 @@ __FILE_TYPES__ = {
 }
 
 
-def file_path(file_type: str, batch: str) -> str:
+def file_path(file_type: str, batch: str) -> tuple[str, str]:
     try:
         prefix, suffix = __FILE_TYPES__[file_type]
         data_dir = os.environ.get("DATA_DIR", "data")
@@ -28,6 +28,8 @@ def load_test_data() -> pd.DataFrame:
 
     # concat relevant column into original_string column
     df = xls_df[["物料描述", "备注", "一级类目"]].applymap(normalize_text)
+    # uncomment this to use memo column for feature extraction too
+    # improvement is marginal and probably won't work for other data
     df["original_string"] = df["物料描述"]  # + " " + df["备注"]
     df.rename({"一级类目": "category"}, axis=1, inplace=True)
     df = df.drop(["物料描述", "备注"], axis=1)
@@ -87,10 +89,11 @@ def test_batch_predict(fromfile, batch):
 
 def test_extract_features(batch):
     test_df = load_test_data()
+    output_file = file_path("feature", batch)
 
     features_df = extract_features_with_openai(test_df, "original_string", "35t")
     features_df.to_csv(file_path("feature", batch), index=False, quoting=csv.QUOTE_NONNUMERIC)
-    print(f"===INFO: writing {len(features_df)} rows")
+    print(f"===INFO: writing {len(features_df)} rows to {output_file}")
 
     assert os.path.exists(file_path("feature", batch))
 
