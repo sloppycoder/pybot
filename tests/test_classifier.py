@@ -14,7 +14,7 @@ __FILE_TYPES__ = {
 }
 
 
-def file_path(file_type: str, batch: str) -> str:
+def file_path(file_type: str, batch: str) -> tuple[str, str]:
     try:
         prefix, suffix = __FILE_TYPES__[file_type]
         data_dir = os.environ.get("DATA_DIR", "data")
@@ -28,7 +28,9 @@ def load_test_data() -> pd.DataFrame:
 
     # concat relevant column into original_string column
     df = xls_df[["物料描述", "备注", "一级类目"]].applymap(normalize_text)
-    df["original_string"] = df["物料描述"] + " " + df["备注"]
+    # uncomment this to use memo column for feature extraction too
+    # improvement is marginal and probably won't work for other data
+    df["original_string"] = df["物料描述"]  # + " " + df["备注"]
     df.rename({"一级类目": "category"}, axis=1, inplace=True)
     df = df.drop(["物料描述", "备注"], axis=1)
     df = df.applymap(normalize_text)
