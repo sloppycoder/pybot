@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Any, Iterator
 
 import openai
+import pandas as pd
 from openai.types.chat.chat_completion import ChatCompletion
 from tenacity import (
     RetryError,
@@ -14,7 +15,7 @@ from tenacity import (
 )
 
 from bot import cache
-from bot.utils import remove_fillers
+from bot.utils import blank_filler
 
 _MODEL_MAP_ = {"35t": "gpt-3.5-turbo-1106", "4pre": "gpt-4-1106-preview"}
 
@@ -143,28 +144,30 @@ def invoke_openai_completion(parts: list[str], model_version: str) -> ChatComple
     return completion
 
 
-def extract_features_with_openai(items: list[str], model_version: str) -> list[dict] | None:
-    features = {part: cache.find_extracted_features(part, model_version) for part in items}
-    items_not_in_cache = [k for k, v in features.items() if v is None]
+def extract_features_with_openai(input_df: pd.DataFrame, key_col: str, model_version: str) -> pd.DataFrame:
+    all_features = {key: cache.find_extracted_features(key, model_version) for key in input_df[key_col]}
+    items_not_in_cache = [k for k, v in all_features.items() if v is None]
 
     if items_not_in_cache:
-        try:
-            completion = invoke_openai_completion(items_not_in_cache, model_version)
-            response = json.loads(completion.choices[0].message.content)  # type: ignore
-            for item in walk_response(response, items_not_in_cache):
-                try:
-                    features[item["original_string"]] = item
-                    cache.save_extracted_feature(item["original_string"], model_version, item)
-                except KeyError:
-                    log.warn(f"original_text not found in response {item}")
-        except RetryError:
-            log.warn("failed after configured retries")
+        chunk_size = 20
+        # call openai with a chunk of items at a time
+        # otherwise will exceed input lenght limit
+        for i in range(0, len(items_not_in_cache), chunk_size):
+            part_list = items_not_in_cache[i : i + chunk_size]
+            log.info(f"calling openai with {part_list}")
 
-    # Use a list of keys to avoid RuntimeError for changing dictionary size during iteration
-    for key in list(features.keys()):
-        if features[key] is None:
-            log.warn(f"unable to extract features for {key}")
-            features.pop(key)
+            try:
+                completion = invoke_openai_completion(part_list, model_version)
+                response = json.loads(completion.choices[0].message.content)  # type: ignore
+                for item in walk_response(response, items_not_in_cache):
+                    try:
+                        key = item["original_string"]
+                        all_features[key] = item
+                        cache.save_extracted_feature(key, model_version, item)
+                    except KeyError:
+                        log.warn(f"original_text not found in response {item}")
+            except RetryError:
+                log.warn("failed after configured retries")
 
-    result = list(features.values())
-    return remove_fillers(result)
+    result_df = pd.DataFrame.from_dict(all_features, orient="index").applymap(blank_filler)
+    return pd.merge(input_df, result_df, on=["original_string"])

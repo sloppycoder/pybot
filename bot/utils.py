@@ -1,7 +1,11 @@
 import jieba
+import numpy as np
 
 _FILLERS_ = [
+    "NA",
+    "na",
     "N/A",
+    "n/a",
     "not available",
     "null",
     None,
@@ -26,7 +30,12 @@ def chinese_tokenizer(text) -> list[str]:
 
 
 def normalize_text(text: str) -> str:
-    if isinstance(text, str):
+    if text is None:
+        return ""
+    elif isinstance(text, float) and np.isnan(text):
+        return ""
+    elif isinstance(text, str):
+        text = text.strip()
         text = text.replace("，", "")
         text = text.replace(",", "")
         text = text.replace("'", "")
@@ -43,9 +52,13 @@ def normalize_text(text: str) -> str:
         return text
 
 
-def remove_fillers(items):
-    for item in items:
-        for col in _FEATURE_COLS_:
-            if col not in item or item[col] in _FILLERS_:
-                item[col] = ""
-    return items
+def blank_filler(text: str):
+    if text is None:
+        return ""
+    elif isinstance(text, str):
+        return "" if text in _FILLERS_ else text
+    elif isinstance(text, float) and np.isnan(text):
+        return ""
+    else:
+        # may not be text actually...
+        text

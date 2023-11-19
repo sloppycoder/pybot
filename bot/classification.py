@@ -13,9 +13,7 @@ from sklearn.pipeline import FeatureUnion, Pipeline
 from sklearn.preprocessing import LabelEncoder
 from tabulate import tabulate
 
-from bot.utils import _FEATURE_COLS_, _TARGET_COL_, chinese_tokenizer, remove_fillers
-
-_UNKNOWN_ = "不详"
+from bot.utils import _FEATURE_COLS_, _TARGET_COL_, blank_filler, chinese_tokenizer
 
 _ALL_FIELDS_ = _FEATURE_COLS_ + [_TARGET_COL_]
 
@@ -54,19 +52,15 @@ class PartsClassifier:
         self.combined_features = joblib.load(f"data/{model_prefix}_combined_features.joblib")
         self.encoder = joblib.load(f"data/{model_prefix}_encoder.joblib")
 
-    def guess(self, parts: list[dict]) -> dict[str, str] | None:
-        remove_fillers(parts)
-        part_vecs = [self.combined_features.transform(pd.DataFrame([part])) for part in parts]
-        encoded_predictions = [self.model.predict(vec) for vec in part_vecs]
-        predictions = [self.encoder.inverse_transform(pred)[0] for pred in encoded_predictions]
+    def guess(self, parts: pd.DataFrame) -> pd.DataFrame:
+        unwanted_cols = [col for col in parts.columns if col not in _FEATURE_COLS_]
+        prediction = parts.drop(unwanted_cols, axis=1).applymap(blank_filler)
 
-        if len(predictions) == len(parts):
-            keys = [part["original_string"] for part in parts]
-            result = dict(zip(keys, predictions))
-            return result
+        model_input = self.combined_features.transform(prediction)
+        encoded_prediction = self.model.predict(model_input)
+        prediction["prediction"] = self.encoder.inverse_transform(encoded_prediction)
 
-        log.warn(f"number of predictions does not match number of parts {parts}")
-        return None
+        return prediction
 
 
 def train_model_with_features(input_file: str, model_prefix: str):
@@ -87,7 +81,7 @@ def train_model_with_features(input_file: str, model_prefix: str):
     # Check for missing values
     log.info(f"\n{data.isnull().sum()}")
 
-    text_imputer = SimpleImputer(strategy="constant", fill_value=_UNKNOWN_)
+    text_imputer = SimpleImputer(strategy="constant", fill_value="")
     data[_ALL_FIELDS_] = text_imputer.fit_transform(data[_ALL_FIELDS_])
 
     category_encoder = LabelEncoder()
