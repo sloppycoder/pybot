@@ -14,13 +14,13 @@ __FILE_TYPES__ = {
 }
 
 
-def file_path(file_type: str, batch: str) -> tuple[str, str]:
+def file_path(file_type: str, batch: str) -> str:
     try:
         prefix, suffix = __FILE_TYPES__[file_type]
         data_dir = os.environ.get("DATA_DIR", "data")
-        return f"{data_dir}/{file_type}_{batch}{suffix}"
+        return f"{data_dir}/{prefix}_{batch}{suffix}"
     except KeyError:
-        return "unknown", ""
+        return f"{data_dir}/{file_type}_{batch}"
 
 
 def load_test_data() -> pd.DataFrame:
