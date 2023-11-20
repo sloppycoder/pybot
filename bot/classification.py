@@ -93,17 +93,19 @@ def train_model_with_features(input_file: str, model_prefix: str):
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
     # Set up the parameter dictionary for XGBoost
+    # comment out various parameters for now and use the default for now
+    # result seems to be the same
     params = {
-        "max_depth": 6,
-        "min_child_weight": 1,
-        "eta": 0.3,
-        "subsample": 1,
-        "colsample_bytree": 1,
-        "objective": "multi:softmax",
-        "num_class": len(category_encoder.classes_),
-        "eval_metric": "mlogloss",
+        # "max_depth": 6,
+        # "min_child_weight": 1,
+        # "eta": 0.3,
+        # "subsample": 1,
+        # "colsample_bytree": 1,
+        # "use_label_encoder": False,
+        # "objective": "multi:softmax",
+        # "num_class": len(category_encoder.classes_),
+        # "eval_metric": "mlogloss",
         "verbosity": 2,
-        "use_label_encoder": False,
     }
 
     # Training the XGBoost classifier
