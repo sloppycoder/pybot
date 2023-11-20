@@ -2,7 +2,6 @@
   "packages": [
     "python@3.11",
     "poetry@1.6.1",
-    "python311Packages.numpy@1.25.2",
     "gcc-unwrapped.lib",
     "python311Packages.pandas@1.5.3",
     "zlib@latest"
@@ -14,5 +13,6 @@
     "scripts": {
       "test": "poetry run pytest -v"
     }
-  }
+  },
+  "__comment__": "gcc-unwrapped.lib provides libstdc++.so and zlib provides libz.so, both are needed by pandas and numpy"
 }
