@@ -1,7 +1,11 @@
 {
   "packages": [
     "python@3.11",
-    "poetry@1.6.1"
+    "poetry@1.6.1",
+    "python311Packages.numpy@1.25.2",
+    "gcc-unwrapped.lib",
+    "python311Packages.pandas@1.5.3",
+    "zlib@latest"
   ],
   "shell": {
     "init_hook": [

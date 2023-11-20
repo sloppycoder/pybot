@@ -1,6 +1,10 @@
 {
   "lockfile_version": "1",
   "packages": {
+    "gcc-unwrapped.lib": {
+      "resolved": "github:NixOS/nixpkgs/75a52265bda7fd25e06e3a67dee3f0354e73243c#gcc-unwrapped.lib",
+      "source": "nixpkg"
+    },
     "poetry@1.6.1": {
       "last_modified": "2023-10-25T20:49:13Z",
       "plugin_version": "0.0.3",
@@ -22,6 +26,46 @@
         }
       }
     },
+    "python311Packages.numpy@1.25.2": {
+      "last_modified": "2023-10-25T20:49:13Z",
+      "resolved": "github:NixOS/nixpkgs/75a52265bda7fd25e06e3a67dee3f0354e73243c#python311Packages.numpy",
+      "source": "devbox-search",
+      "version": "1.25.2",
+      "systems": {
+        "aarch64-darwin": {
+          "store_path": "/nix/store/afrric2fpgzq45bvpn5rabs26v02nn3w-python3.11-numpy-1.25.2"
+        },
+        "aarch64-linux": {
+          "store_path": "/nix/store/8jl0s3xhycg3xmy8f9d4npb1l436jkch-python3.11-numpy-1.25.2"
+        },
+        "x86_64-darwin": {
+          "store_path": "/nix/store/h0ssv85ga5l315lar6jvg9h8rb8spf03-python3.11-numpy-1.25.2"
+        },
+        "x86_64-linux": {
+          "store_path": "/nix/store/irp801m45i9pmznkiw80dwxxwq7i06vw-python3.11-numpy-1.25.2"
+        }
+      }
+    },
+    "python311Packages.pandas@1.5.3": {
+      "last_modified": "2023-07-24T21:56:31Z",
+      "resolved": "github:NixOS/nixpkgs/dfcffbd74fd6f0419370d8240e445252a39f4d10#python311Packages.pandas",
+      "source": "devbox-search",
+      "version": "1.5.3",
+      "systems": {
+        "aarch64-darwin": {
+          "store_path": "/nix/store/p9wiz33mh3q2pdqj415sdis76h94c4a1-python3.11-pandas-1.5.3"
+        },
+        "aarch64-linux": {
+          "store_path": "/nix/store/fb2bpyrk0yvnszl87y781s2y102478av-python3.11-pandas-1.5.3"
+        },
+        "x86_64-darwin": {
+          "store_path": "/nix/store/r0ypc4ljmk69c779m6ihpys4385xdsmf-python3.11-pandas-1.5.3"
+        },
+        "x86_64-linux": {
+          "store_path": "/nix/store/iwjfyhscqjz2zhb9npcm38hcbgxisdcz-python3.11-pandas-1.5.3"
+        }
+      }
+    },
     "python@3.11": {
       "last_modified": "2023-10-25T20:49:13Z",
       "plugin_version": "0.0.1",
@@ -40,6 +84,26 @@
         },
         "x86_64-linux": {
           "store_path": "/nix/store/ffll6glz3gwx342z0ch8wx30p5cnqz1z-python3-3.11.5"
+        }
+      }
+    },
+    "zlib@latest": {
+      "last_modified": "2023-11-07T16:32:36Z",
+      "resolved": "github:NixOS/nixpkgs/9b92dad3804b543a8b5db878aabf7132d601fa91#zlib",
+      "source": "devbox-search",
+      "version": "1.3",
+      "systems": {
+        "aarch64-darwin": {
+          "store_path": "/nix/store/ycsnhmhjj1xwgx2ljqxnifgc8id3y4yy-zlib-1.3"
+        },
+        "aarch64-linux": {
+          "store_path": "/nix/store/i6w8i3ps7x9cyyyvfif55rf1plvprp2f-zlib-1.3"
+        },
+        "x86_64-darwin": {
+          "store_path": "/nix/store/qhvhxknspl6lsvbnyw99rbrriwgpry77-zlib-1.3"
+        },
+        "x86_64-linux": {
+          "store_path": "/nix/store/s5gzrzha72q79v92wqq61x9ir8xiwbxk-zlib-1.3"
         }
       }
     }
