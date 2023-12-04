@@ -3,8 +3,8 @@
     "python@3.11",
     "poetry@1.6.1",
     "gcc-unwrapped.lib",
-    "python311Packages.pandas@1.5.3",
-    "zlib@latest"
+    "zlib@latest",
+    "python311Packages.pandas@2.0.3"
   ],
   "shell": {
     "init_hook": [

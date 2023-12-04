@@ -26,23 +26,23 @@
         }
       }
     },
-    "python311Packages.pandas@1.5.3": {
-      "last_modified": "2023-07-24T21:56:31Z",
-      "resolved": "github:NixOS/nixpkgs/dfcffbd74fd6f0419370d8240e445252a39f4d10#python311Packages.pandas",
+    "python311Packages.pandas@2.0.3": {
+      "last_modified": "2023-09-27T18:02:17Z",
+      "resolved": "github:NixOS/nixpkgs/517501bcf14ae6ec47efd6a17dda0ca8e6d866f9#python311Packages.pandas",
       "source": "devbox-search",
-      "version": "1.5.3",
+      "version": "2.0.3",
       "systems": {
         "aarch64-darwin": {
-          "store_path": "/nix/store/p9wiz33mh3q2pdqj415sdis76h94c4a1-python3.11-pandas-1.5.3"
+          "store_path": "/nix/store/69f2cb6lf2zm1zr9rs75w60x635w8d9x-python3.11-pandas-2.0.3"
         },
         "aarch64-linux": {
-          "store_path": "/nix/store/fb2bpyrk0yvnszl87y781s2y102478av-python3.11-pandas-1.5.3"
+          "store_path": "/nix/store/d8r8vy82dy1khjah1s3s8z8mhf6i7yqx-python3.11-pandas-2.0.3"
         },
         "x86_64-darwin": {
-          "store_path": "/nix/store/r0ypc4ljmk69c779m6ihpys4385xdsmf-python3.11-pandas-1.5.3"
+          "store_path": "/nix/store/n4qx8qc93vq4xzzgcnph2k6mqm1brgvp-python3.11-pandas-2.0.3"
         },
         "x86_64-linux": {
-          "store_path": "/nix/store/iwjfyhscqjz2zhb9npcm38hcbgxisdcz-python3.11-pandas-1.5.3"
+          "store_path": "/nix/store/axvxbll8f5rpmfc8h65llljbkv0vc1ih-python3.11-pandas-2.0.3"
         }
       }
     },
