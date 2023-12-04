@@ -15,6 +15,11 @@ repos:
   - id: poetry-lock
     args:
     - --no-update
+  - id: poetry-export
+    args: ["-f", "requirements.txt", "-o", "requirements.txt", "--without-hashes"]
+  - id: poetry-export
+    args: ["--with", "dev", "-f", "requirements.txt", "-o", "requirements-dev.txt", "--without-hashes"]
+
 
 - repo: local
   hooks:
